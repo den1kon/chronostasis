@@ -46,7 +46,13 @@
 - Node script syntax: `node --check scripts/prefix-commit.mjs`,
   `node --check scripts/install-hooks.mjs`, and
   `node --check scripts/test-hooks.mjs`.
-- Application verification commands are added as CHR-5 establishes the tooling.
+- Workspace checks: `pnpm lint`, `pnpm typecheck`, `pnpm test:hooks`, and
+  `pnpm build`.
+- `pnpm test:unit` runs Vitest. No application test files exist at Task 2;
+  its nonzero empty-suite result must not be reported as passing.
+- Integration and Playwright commands are added as CHR-5 establishes them.
+- Use the Node.js and pnpm versions pinned in `.node-version` and
+  `package.json`; install dependencies with `pnpm install --frozen-lockfile`.
 
 ## Verification scope
 

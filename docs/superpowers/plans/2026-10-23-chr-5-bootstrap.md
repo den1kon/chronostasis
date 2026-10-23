@@ -6,11 +6,11 @@
 
 **Architecture:** A pnpm workspace contains a Vite frontend, shared Web Request/Response API handlers, thin Vercel adapters, a local Node adapter, public contracts, and server-only Drizzle data access. Docker Compose runs frontend, API, initialization, and persistent Postgres. Clerk is external; Vercel and Neon deployment belongs to another ticket.
 
-**Tech Stack:** TypeScript, React, Vite, pnpm workspaces, Vercel Functions, Neon-compatible Postgres, Drizzle, Clerk, Vitest, Playwright, Docker Compose.
+**Tech Stack:** TypeScript, React, Vite, Tailwind CSS, pnpm workspaces, Vercel Functions, Neon-compatible Postgres, Drizzle, Clerk, Vitest, Playwright, Docker Compose.
 
 **Spec:** `docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md` (read it before executing).
 
-Status: approved for implementation by the user on 2026-10-23. Task 1 implementation and focused verification are ready for unstaged review; no task has been committed. Remaining tasks have not started.
+Status: approved for implementation by the user on 2026-10-23. Task 1 was reviewed and committed as `d645c1c`. Task 2 is implemented and verified, pending unstaged review and commit. Tasks 3–7 have not started.
 
 ## Global Constraints
 
@@ -19,6 +19,7 @@ Status: approved for implementation by the user on 2026-10-23. Task 1 implementa
 - Proposed baseline: Node 24 LTS, pnpm 10, Postgres 17. Verify dependency engine compatibility at implementation time; pin exact selected Node/container and package-manager versions and commit the generated lockfile.
 - Nothing is staged or committed without the user's explicit unstaged-diff review approval.
 - Preserve user edits: the current 50-character limit excludes the ticket prefix.
+- Tailwind CSS / @tailwindcss/vite 4.3.3 belongs to Task 2’s existing commit; use utilities for component styling and `@theme` for shared tokens.
 - No development authentication bypass, hard-coded token, or test-only login endpoint is shipped.
 - Missing Clerk credentials must fail the authenticated suite with an actionable setup error, not silently skip it.
 - Final Bugbot and Security Review runs require a separate user permission request after implementation and verification.
@@ -82,10 +83,10 @@ Implement in this order. Task 1 installs the hook before the first repository co
 - [x] Run `node scripts/test-hooks.mjs` with temporary repositories and assert rewritten text and exit codes. Do not create test commits in Chronostasis.
 - [x] Activate the hook in Chronostasis after verifying no conflicting hook path exists; read back the configuration and executable mode. Verify installation before this task’s review/commit checkpoint.
 
-- [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `chore: define ticket workflow`. Verify the resulting subject is exactly `[CHR-5] chore: define ticket workflow` and has no message body. If review is pending, leave the task uncommitted.
+- [x] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `chore: define ticket workflow`. Verify the resulting subject is exactly `[CHR-5] chore: define ticket workflow` and has no message body. If review is pending, leave the task uncommitted.
 
 
-**Verification evidence:** `node scripts/test-hooks.mjs`: 37 passed, 0 failed, 0 skipped. Shell/Node syntax checks passed. Repository-local `core.hooksPath` reads `.githooks`; the hook is executable. First commit remains pending explicit unstaged-review confirmation.
+**Verification evidence:** `node scripts/test-hooks.mjs`: 37 passed, 0 failed, 0 skipped. Shell/Node syntax checks passed. Repository-local `core.hooksPath` reads `.githooks`; the hook is executable. Explicit user review/commit approval received; committed as `d645c1c` with exactly one `[CHR-5]` prefix and no body.
 
 ## Task 2: TypeScript workspace and baseline checks
 
@@ -98,18 +99,24 @@ Implement in this order. Task 1 installs the hook before the first repository co
 **Interfaces**
 
 - Consumes: ticket hook and planning/rules from Task 1; compatible Node and pnpm.
-- Produces: installable pnpm workspace, strict shared TS/ESLint settings, Vitest runner, and minimal buildable React/Vite entrypoint. Add scripts `lint`, `typecheck`, `test:unit`, `test:hooks`, `hooks:install`, and `build`; later tasks introduce their own executable commands alongside their implementation, not as stubs.
+- Produces: installable pnpm workspace, strict shared TS/ESLint settings, Vitest runner, and minimal buildable React/Vite entrypoint styled with Tailwind CSS. Add scripts `lint`, `typecheck`, `test:unit`, `test:hooks`, `hooks:install`, and `build`; later tasks introduce their own executable commands alongside their implementation, not as stubs.
 
-**Files:** root `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `tsconfig.base.json`, `eslint.config.js`, `vitest.config.ts`, `.gitignore`, `.dockerignore`; `apps/web` manifest/configuration/minimal entrypoint; `README.md` prerequisites and workspace command sections. Do not create manifests pointing at absent API/database implementations.
+**Files:** root `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `tsconfig.base.json`, `eslint.config.js`, `vitest.config.ts`, `.gitignore`, `.dockerignore`, `.npmrc`, `.node-version`, `tsconfig.json`, `tsconfig.tooling.json`; `apps/web` manifest/configuration/minimal entrypoint; `README.md` prerequisites and workspace command sections; AGENTS.md verification commands and spec/plan execution status. Do not create manifests pointing at absent API/database implementations.
 
-- [ ] Verify current branch/status and reread AGENTS.md. Record existing files; do not overwrite user changes.
-- [ ] Resolve compatible package versions against the spec baseline. Pin exact Node, pnpm, and package versions/lockfile; report any baseline incompatibility before changing it.
-- [ ] Set up workspaces, strict TS configuration, type-aware ESLint with `--max-warnings=0`, and Vitest. Frontend TS must not include Node-only globals; server packages must not be imported by browser entrypoints.
-- [ ] Add pnpm aliases for the dependency-free hook install/tests from Task 1. Set up a minimal buildable React/Vite shell; routing/authentication arrive in Task 5.
-- [ ] Generate the initial lockfile with `pnpm install`, then verify reproducibility with `pnpm install --frozen-lockfile`. Run `pnpm lint`, `pnpm typecheck`, `pnpm test:hooks`, and `pnpm build`. Expected: successful exits. Do not add dummy unit tests merely to make an empty initial test suite appear meaningful; behavioral unit tests arrive with their owning tasks.
-- [ ] Update README with the actual prerequisites, workspace layout, scripts, and the fact that Compose and authentication are not yet implemented at this commit.
+- [x] Verify current branch/status and reread AGENTS.md. Record existing files; do not overwrite user changes.
+- [x] Resolve compatible package versions against the spec baseline. Pin exact Node, pnpm, and package versions/lockfile; report any baseline incompatibility before changing it.
+- [x] Set up workspaces, strict TS configuration, type-aware ESLint with `--max-warnings=0`, and Vitest. Frontend TS must not include Node-only globals; server packages must not be imported by browser entrypoints.
+- [x] Add pnpm aliases for the dependency-free hook install/tests from Task 1. Set up a minimal buildable React/Vite shell; routing/authentication arrive in Task 5.
+- [x] Add exact `tailwindcss` and `@tailwindcss/vite` 4.3.3 dev dependencies to `apps/web`, register the official Vite plugin, and import Tailwind in `src/styles.css`.
+- [x] Migrate scaffold selectors to Tailwind utilities, preserving the existing content, semantic markup, colors, and responsive spacing. Keep shared colors in `@theme` and document-level base styles in the CSS entrypoint.
+- [x] Verify the Tailwind-enabled production build and browser rendering at desktop and 390 × 844 mobile dimensions. Confirm no horizontal overflow and that the theme colors, utility spacing, and borders render correctly. Do not add CSS-selector snapshot tests.
+- [x] Generate the initial lockfile with `pnpm install`, then verify reproducibility with `pnpm install --frozen-lockfile`. Run `pnpm lint`, `pnpm typecheck`, `pnpm test:hooks`, and `pnpm build`. Expected: successful exits. Do not add dummy unit tests merely to make an empty initial test suite appear meaningful; behavioral unit tests arrive with their owning tasks.
+- [x] Update README with the actual prerequisites, workspace layout, scripts, and the fact that Compose and authentication are not yet implemented at this commit.
 
 - [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `chore: scaffold typescript workspaces`. Verify the resulting subject is exactly `[CHR-5] chore: scaffold typescript workspaces` and has no message body. If review is pending, leave the task uncommitted.
+
+
+**Verification evidence:** after the Tailwind addition, frozen install, lint, typecheck, build, and all 37 hook tests passed. Tailwind utilities/theme colors were verified in the browser at 390 × 844 and 1280 × 800 CSS viewports with no horizontal overflow; desktop content remains capped at 640px. The temporary viewport override was reset. Temporary negative probes confirmed implicit-any/browser-Node-global type errors and the explicit-any lint rule; probes were removed afterward. Browser inspection confirmed the scaffold renders on port 5174 (local port 5173 is intercepted by OrbStack). `pnpm test:unit` exits 1 because no application unit tests exist yet; this is reported rather than bypassed.
 
 ## Task 3: Database schema, migrations, and persistence
 
@@ -192,7 +199,7 @@ expect(deps.ensureUser).not.toHaveBeenCalled();
 - [ ] Run those tests to confirm failure. Implement typed fetch helpers using contracts; database packages never enter the client dependency graph.
 - [ ] Add the Compose frontend service on host port 5173 with `/api` proxy to the internal API. Gate API/frontend startup on successful database initialization, configure source hot reload and container-owned dependency volumes, and keep backend secrets out of the frontend environment.
 - [ ] Add Clerk provider/sign-in and protected routes. After login POST `/api/me`, then GET `/api/me`, and display account-ready status only after the read succeeds. Prevent stale responses from updating state after sign-out/unmount; allow safe retry.
-- [ ] Add accessible navigation, loading/error states, and clearly labeled Focus/Inventory placeholders. No functional timer/chest is implied. Verify narrow viewport layout and keyboard navigation.
+- [ ] Use the existing Tailwind utilities and shared theme tokens to add accessible navigation, loading/error states, and clearly labeled Focus/Inventory placeholders. No functional timer/chest is implied. Verify narrow viewport layout and keyboard navigation.
 - [ ] Run `pnpm test:unit`, `pnpm typecheck`, and `pnpm build`. Inspect the frontend bundle for server imports and secret-bearing configuration. Source placeholders in `.env.example` are not proof of actual secret leakage; do not print real keys during checks.
 
 - [ ] Document and verify an exact dependency refresh command for the chosen volume layout, preserving the database volume. Never require deleting developer data to update dependencies.
@@ -240,7 +247,7 @@ expect(deps.ensureUser).not.toHaveBeenCalled();
 **Files:** README.md, ARCHITECTURE.md, AGENTS.md, design spec and this plan.
 
 - [ ] Write README setup and troubleshooting from the actual tested commands, including Docker-only operation, optional host pnpm, Clerk setup, data retention/reset, migrations, seeds, tests, and hooks.
-- [ ] After implementation verification, create `ARCHITECTURE.md` describing actual workspace/runtime/auth/data/test flows and future hosting boundaries. Do not describe undeployed infrastructure as live.
+- [ ] After implementation verification, create `ARCHITECTURE.md` describing actual workspace/runtime/auth/data/test flows, the Tailwind/Vite styling pipeline, and future hosting boundaries. Do not describe undeployed infrastructure as live.
 - [ ] Finalize AGENTS.md with actual commands and documentation upkeep. Preserve commit review, subagent permission, subject length excluding prefix, rewriting provenance, and PR restrictions.
 - [ ] Review all documentation for ticket-induced changes; mark design decisions changed during execution and checkbox states honestly. Record omitted/deferred scope and credentials-dependent verification.
 - [ ] Run `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`, plus clean Compose startup, restart/persistence, and initializer-failure checks. Record exact outcomes. Do not invoke destructive database resets against developer data.
@@ -257,7 +264,7 @@ expect(deps.ensureUser).not.toHaveBeenCalled();
 ## Self-review and acceptance mapping
 
 - Ticket workflow and hook: Task 1; available before the first planned commit.
-- Strict workspace tooling: Task 2; additional test commands arrive with their owning implementations.
+- Strict workspace tooling and Tailwind integration/CSS migration: Task 2; additional test commands arrive with their owning implementations.
 - Database: Task 3; schema, migrations, seeds, isolated tests, and persistent local Postgres.
 - API/auth/runtime adapters: Task 4; real auth enforcement, safe failures, adapter parity, and internal API service.
 - Complete Docker Compose and mobile frontend connectivity: Task 5; startup ordering, hot reload, dependency refresh, persistence, initialization failure, and authenticated POST/GET flow.

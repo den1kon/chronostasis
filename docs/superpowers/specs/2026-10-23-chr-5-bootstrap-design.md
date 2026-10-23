@@ -1,6 +1,6 @@
 # CHR-5: Bootstrap design
 
-Status: approved for implementation on 2026-10-23. Task 1 is implemented and verified, pending unstaged review and commit; the application bootstrap remains in progress.
+Status: approved for implementation on 2026-10-23. Task 1 is committed (`d645c1c`); Task 2 workspace/scaffold is implemented and verified, pending unstaged review. The application bootstrap remains in progress.
 
 ## Intent
 
@@ -10,7 +10,7 @@ The user requested the spec and plan together. The user subsequently approved im
 
 ## Requirements and boundaries
 
-- TypeScript, React, Vite, pnpm workspaces, Vercel Functions, Neon, Postgres, Drizzle, and Clerk.
+- TypeScript, React, Vite, Tailwind CSS, pnpm workspaces, Vercel Functions, Neon, Postgres, Drizzle, and Clerk.
 - Working Docker Compose development setup, migrations, seed data, end-to-end persistence, environment configuration, strict lint/type checks, unit tests, and Playwright smoke tests.
 - README, design spec, implementation plan, finalized AGENTS.md, and an accurate `ARCHITECTURE.md` after implementation.
 - Deployment is a separate ticket: no Vercel project linking, cloud deployment, or Neon resource creation in CHR-5.
@@ -49,7 +49,7 @@ Use standard `pg` pooling with Drizzle for local Postgres and the future pooled 
 
 ## Local startup
 
-Proposed baseline: Node 24 LTS, pnpm 10, Postgres 17. Verify dependency engine compatibility at implementation time; pin exact selected Node/container and package-manager versions and commit the generated lockfile. Do not silently change the baseline if incompatible; report the constraint.
+Baseline: Node 24 LTS, pnpm 10, Postgres 17. Task 2 pins Node 24.20.0, pnpm 10.34.7, TypeScript 6.0.3, React 19.3.1, Vite 8.3.5, and Tailwind CSS / @tailwindcss/vite 4.3.3 with compatible lint/test tooling and a generated lockfile. TypeScript 7 is outside the selected lint tooling’s peer range, so TypeScript 6 is intentional. Pin the exact Postgres 17 image in Task 3 after verification. Do not silently change the baseline if incompatible; report the constraint.
 
 After copying `.env.example` to `.env` and supplying Clerk development credentials, `docker compose up --build` starts:
 
@@ -92,6 +92,14 @@ Shared handlers use the Web `Request`/`Response` interface. Dependencies are inj
 
 The local adapter forwards method, URL, headers, and body to the shared handlers and translates the response back. Vercel adapters do the equivalent conversion through the supported Vercel Node request/response interface. Body forwarding must not parse then inconsistently reserialize requests; method dispatch and headers must agree between adapters. Both adapters enforce a 64 KiB request-body limit; a larger body receives 413 with a safe JSON error, and exactly 64 KiB is accepted.
 
+## Frontend styling
+
+The user added Tailwind CSS to the stack while Task 2 was awaiting review. Include it in Task 2's existing workspace commit, not a separate task or commit. Install exact-matching `tailwindcss` and `@tailwindcss/vite` 4.3.3 versions in `apps/web`, register the official Vite plugin, and import Tailwind from `src/styles.css`.
+
+Use Tailwind utilities for component layout, spacing, typography, borders, and responsive behavior. Keep the global stylesheet small: the Tailwind import, shared `@theme` tokens, and document-level base styles. Migrate the scaffold's existing selectors to utilities while preserving its copy, colors, readable spacing, semantics, and mobile-first layout. Shared tokens are forest `#17251f`, parchment `#f2f5ee`, leaf `#c0d7a0`, and outline `#627568`. Later frontend work continues this styling approach. No separate PostCSS setup or legacy Tailwind JavaScript config is needed for this Vite integration.
+
+Verify generated styles in the build and visually check both a narrow mobile viewport and desktop. This CSS migration does not warrant implementation-mirroring unit tests; authenticated interaction tests remain owned by their later tasks.
+
 ## Frontend bootstrap behavior
 
 Provide `/sign-in`, `/`, and `/inventory` with accessible mobile-first layout. Signed-out visitors see sign-in; signed-in visitors see a Focus placeholder and Inventory placeholder. Clearly label unimplemented product actions rather than providing working-looking timers or chests.
@@ -120,6 +128,7 @@ AGENTS.md requires documentation upkeep, one implementation-plan task per Git co
 
 ## Sources checked
 
+- [Tailwind with Vite](https://tailwindcss.com/docs/installation/using-vite): official build-time plugin and CSS import.
 - [Vite on Vercel](https://vercel.com/docs/frameworks/frontend/vite): static frontend and API adapters.
 - [Vercel local development](https://vercel.com/docs/cli/dev): available alternative to the default local adapter.
 - [Clerk Playwright testing](https://clerk.com/docs/guides/development/testing/playwright/overview): real sessions and testing helpers.

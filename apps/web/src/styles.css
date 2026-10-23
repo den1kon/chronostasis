@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: system-ui, sans-serif;
+  --color-forest: #17251f;
+  --color-parchment: #f2f5ee;
+  --color-leaf: #c0d7a0;
+  --color-outline: #627568;
+}
+
+@layer base {
+  body {
+    @apply min-h-svh min-w-[280px] bg-forest font-sans leading-[1.6] text-parchment antialiased;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+  }
+}
