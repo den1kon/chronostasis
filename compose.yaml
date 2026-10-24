@@ -37,6 +37,25 @@ services:
       DATABASE_URL: postgresql://chronostasis:chronostasis@db:5432/chronostasis
     command: ["sh", "-c", "pnpm db:migrate && pnpm db:seed"]
 
+  api:
+    <<: *app
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://chronostasis:chronostasis@db:5432/chronostasis
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+      CLERK_ISSUER: ${CLERK_ISSUER:-}
+      CLERK_AUTHORIZED_PARTIES: ${CLERK_AUTHORIZED_PARTIES:-http://localhost:5173,http://localhost:5174}
+      API_PORT: "3001"
+    command: ["pnpm", "--filter", "@chronostasis/api-server", "start"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 6s
+      retries: 15
+      start_period: 5s
+
   db-test:
     <<: *postgres
     profiles: [test]

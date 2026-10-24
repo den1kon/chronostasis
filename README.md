@@ -4,7 +4,7 @@ A mobile-first focus application where completed sessions will unlock chests con
 
 ## Bootstrap status
 
-CHR-5 is in progress on `maintenance/CHR-5`. The ticket workflow and commit hook are committed. The TypeScript workspace and React/Vite/Tailwind shell are committed (`cd62a97`). Task 3 has a verified local Postgres/user/item foundation. Its normalized chest catalogue is implemented with an additive migration, transactional seeds, and relational-constraint tests. Task 3 passed the authorized independent bug review after fixing its single finding; Security Review was skipped for this step as requested. Authentication, the HTTP API, and automated browser tests are not yet implemented. Deployment is a separate ticket.
+CHR-5 is in progress on `maintenance/CHR-5`. The ticket workflow and commit hook are committed. The TypeScript workspace and React/Vite/Tailwind shell are committed (`cd62a97`). Task 3 has a verified local Postgres/user/item foundation. Its normalized chest catalogue is implemented with an additive migration, transactional seeds, and relational-constraint tests. Task 3 passed the authorized independent bug review after fixing its single finding; Security Review was skipped for this step as requested. Task 3 is committed as `7dc32f0`. Task 4 implements shared authenticated API handlers, local/Vercel adapters, and the internal API container; these changes are pending unstaged review. Frontend sign-in and browser tests remain later tasks. Deployment is a separate ticket.
 
 - [Design specification](docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md)
 - [Implementation plan](docs/superpowers/plans/2026-10-23-chr-5-bootstrap.md)
@@ -30,18 +30,20 @@ If port 5173 is occupied or intercepted by another local service, select an avai
 pnpm dev --port 5174
 ```
 
-Vite uses a strict port setting and does not silently choose another port. Restarting or stopping the frontend server does not affect the separately managed Postgres data. The frontend is not connected to the database until the API/authentication tasks are implemented.
+Vite uses a strict port setting and does not silently choose another port. Restarting or stopping the frontend server does not affect the separately managed Postgres data. The frontend remains disconnected until Task 5 wires Clerk and the API client into the UI.
 
 ## Workspace layout
 
 - `apps/web`: React frontend, Vite with the Tailwind CSS plugin, and separate browser/tooling TypeScript configurations.
+- `apps/api`: local Node HTTP runtime for the shared API.
+- `packages/api`: server configuration, Clerk token verification, shared Request/Response handlers, and local/Vercel adapters.
 - `packages/contracts`: Zod public-response schemas and their inferred TypeScript types.
 - `packages/db`: server-only Drizzle schema, repository, connection configuration, migrations, seeds, and persistence tests.
 - `scripts`: Git-hook processor/installer/tests and the isolated Docker integration-test runner.
 - Root configuration: shared strict TypeScript settings, ESLint, Vitest, workspace/package-manager configuration, and the lockfile.
 - `docs/superpowers`: the CHR-5 design and implementation plan.
 
-API workspaces will be introduced with their implementation. Browser code may not import server API/database packages or use Node globals. Runtime output, dependencies, secrets, and local execution scratch files are excluded from Git; `.dockerignore` also excludes them from future Docker build contexts.
+Browser code may not import server API/database packages or use Node globals. Runtime output, dependencies, secrets, and local execution scratch files are excluded from Git; `.dockerignore` also excludes them from future Docker build contexts.
 
 ## Local Postgres and migrations
 
@@ -59,7 +61,7 @@ Start the current Compose setup:
 docker compose up --build
 ```
 
-At Task 3 this starts **only Postgres and the one-shot migration/seed initializer**. The initializer waits for database health, applies migrations, then seeds the catalogue and exits successfully. The database remains running. Frontend/API containers arrive in later tasks; run `pnpm dev` separately to view the disconnected scaffold.
+This starts Postgres, the one-shot migration/seed initializer, and the internal API. Fill in the Clerk settings described below before starting the API. Initialization waits for database health, migrates and seeds, then exits successfully; the API starts only after that success. The API and database have no host-published ports. The frontend container arrives in Task 5; `pnpm dev` still shows the disconnected scaffold. To start only the database without Clerk settings, use `docker compose up --build db-init`.
 
 The development database uses the internal hostname `db`, database/user/password `chronostasis`, and a persistent project-owned named volume. These are local fixtures, not deployment credentials. No database port is published to the host. Compose deliberately fixes its database destinations: an exported host `DATABASE_URL` cannot redirect its initializer toward another database. Deployment and Neon resources are a separate ticket.
 
@@ -114,6 +116,42 @@ That example runs unit tests in the application image; integration tests use the
 
 The integration suite requires an explicit `TEST_DATABASE_URL`, a local/loopback host or `db-test`, and the exact database name `chronostasis_test`. It refuses the normal `db` hostname, remote hosts, other database names, and a destination equal to `DATABASE_URL`/`MIGRATION_DATABASE_URL`. The Compose test service supplies its isolated URL automatically. Tests apply migrations idempotently and remove only the unique users they created; no truncate, schema reset, or database drop is performed.
 
+## Clerk and the API
+
+Create a **Development** application named Chronostasis in the [Clerk Dashboard](https://dashboard.clerk.com/). Start with email/password; social providers can be enabled later. From **API keys**, copy the development publishable and secret keys. From **Domains**, copy the Frontend API URL for the same instance. Put the values only in the ignored root `.env` file:
+
+```dotenv
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_your_key
+CLERK_SECRET_KEY=sk_test_your_key
+CLERK_ISSUER=https://your-instance.clerk.accounts.dev
+CLERK_AUTHORIZED_PARTIES=http://localhost:5173,http://localhost:5174
+API_PORT=3001
+```
+
+`CLERK_ISSUER` is the Frontend API origin, not `api.clerk.com` or the Account Portal URL. Authorized parties are comma-separated frontend origins with no paths/wildcards; include the actual Vite port. Only the publishable key is browser configuration. The API container receives only the server variables it needs; the secret is never added to a `VITE_` variable, build argument, or image. This integration uses Clerk's backend SDK with the secret key to retrieve verification keys, so a separate `CLERK_JWT_KEY` is not required.
+
+The API serves:
+
+- `GET /api/health`: database probe, returning 200 or safe 503.
+- `POST /api/me`: verify a Clerk session bearer token and initialize its user idempotently. Request-body identity is ignored.
+- `GET /api/me`: verify the same identity and read the persisted user, or return 404 before initialization.
+
+Missing, malformed, expired, or invalid tokens return 401 before user-repository access. The server verifies the configured issuer, allowed frontend origins, signature, and token lifetime; pending sessions are rejected. JSON user/error responses use `Cache-Control: no-store`. Both adapters preserve raw request bytes and enforce a 64 KiB body limit, including chunked bodies; exactly 65,536 bytes is accepted and larger input receives 413. No CORS bypass is added.
+
+Start and probe the containerized API:
+
+```sh
+docker compose up --build -d --wait api
+docker compose exec api node -e "fetch('http://localhost:3001/api/health').then(async r => console.log(r.status, await r.json()))"
+docker compose exec api node -e "fetch('http://localhost:3001/api/me').then(async r => console.log(r.status, await r.json()))"
+```
+
+Expect 200 and 401 respectively. Do not print `docker compose config` or container environment dumps when real keys are configured; `docker compose config --quiet` validates without displaying values.
+
+For optional host API development, `pnpm dev:api` loads the root `.env` and listens on `API_PORT` (default 3001). You must supply a deliberately host-reachable `DATABASE_URL`; the Compose-only `db` hostname is not a host connection. Prefer Docker for the current setup. The frontend starts obtaining fresh Clerk session tokens and calling these routes in Task 5; API startup is not proof of a completed browser sign-in flow.
+
+`apps/web/api/health.ts` and `me.ts` are thin future Vercel Function entrypoints backed by the same handlers. Runtime composition is in `apps/web/server/api.ts`, outside the public function directory. The SPA fallback excludes `/api` and all of its descendants, so missing API routes are never rewritten to HTML. Hosted invocation/deployment remains unverified and belongs to the deployment ticket.
+
 ## Styling
 
 Tailwind CSS **4.3.3** and its matching official Vite plugin are pinned in the web workspace. `apps/web/vite.config.ts` registers `@tailwindcss/vite`; `apps/web/src/styles.css` imports Tailwind, declares shared color/font tokens with `@theme`, and applies document-level base styles.
@@ -157,7 +195,7 @@ pnpm test:hooks
 pnpm build
 ```
 
-Linting uses type-aware strict TypeScript rules, React Hooks rules, browser/server import boundaries, and zero allowed warnings. Type checking uses strict mode, explicit browser types, and additional indexed-access/optional-property checks. The build produces static assets in `apps/web/dist`. Workspace libraries emit declarations into their ignored `dist` folders for TypeScript project references. Database source remains strictly checked, but that package alone uses `skipLibCheck` for stable Drizzle’s broken optional-driver declaration files; browser/contracts/tooling continue checking declaration files.
+Linting uses type-aware strict TypeScript rules, React Hooks rules, browser/server import boundaries, and zero allowed warnings. Type checking uses strict mode, explicit browser types, and additional indexed-access/optional-property checks. The build produces static assets in `apps/web/dist`. Workspace libraries emit declarations into their ignored `dist` folders for TypeScript project references. Source remains strictly checked in every workspace. `skipLibCheck` is scoped to the database and shared API packages because Drizzle and Clerk publish declaration errors involving optional drivers/modules and exact optional properties. Browser/contracts/tooling and the local API app retain declaration checking; runtime tests exercise the affected libraries.
 
 `pnpm test:unit` runs contract and database-configuration tests without Docker. `pnpm test:integration` covers real persistence, concurrent upserts, user isolation, migrations, and seeds with Docker. Empty test suites fail instead of silently passing. Playwright is added in its later task.
 

@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md` (read it before executing).
 
-Status: approved for implementation by the user on 2026-10-23. Task 1 was reviewed and committed as `d645c1c`. Task 2 was reviewed and committed as `cd62a97`. Task 3 includes the verified user/item foundation and implemented chest catalogue. The user authorized bug review only (Security Review skipped for this step), followed by commit if clear and continuation to Task 4. Tasks 4–7 have not started.
+Status: approved for implementation by the user on 2026-10-23. Task 1 was reviewed and committed as `d645c1c`. Task 2 was reviewed and committed as `cd62a97`. Task 3 includes the verified user/item foundation and implemented chest catalogue. The user authorized bug review only (Security Review skipped for this step), followed by commit if clear and continuation to Task 4. Task 3 is committed as `7dc32f0`. Task 4 is implemented and locally verified, pending unstaged review; Tasks 5–7 have not started.
 
 ## Global Constraints
 
@@ -154,18 +154,21 @@ Implement in this order. Task 1 installs the hook before the first repository co
 - [x] Run migrations and catalogue seeds twice against an isolated database and verify stable counts: 1 initial chest, 3 items, 3 links. Verify the additive migration preserves existing users/items, and verify later added chest definitions survive reseeding. Update Compose verification expectations to cover these counts and persistence after container recreation.
 - [x] Update README and `ARCHITECTURE.md` from planned to implemented only after verification. Rerun frozen install, lint, typecheck, unit/integration/hook tests, production build, and migration/schema consistency check. Preserve the prepared Task 3 commit subject and unstaged-review gate.
 
-- [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `feat: add local postgres persistence`. Verify the resulting subject is exactly `[CHR-5] feat: add local postgres persistence` and has no message body. If review is pending, leave the task uncommitted.
+- [x] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `feat: add local postgres persistence`. Verify the resulting subject is exactly `[CHR-5] feat: add local postgres persistence` and has no message body. If review is pending, leave the task uncommitted.
 
 
 **Historical verification evidence (before chest extension):** 25 unit tests and 6 real-Postgres integration tests passed. Isolated Compose verification ran the initializer twice (exactly 3 catalogue rows), recreated the database container while retaining the same user UUID and seed rows, checked nonzero migration failure/skipped seed with no secret disclosure, and confirmed no published database port. Verification projects/volumes were removed afterward. Final frozen install, lint, typecheck, production build, all 37 hook tests, and migration/schema consistency check passed. `pnpm db:generate` reported no schema changes for the earlier user/item schema. Chest extension evidence is recorded separately below.
 
 **Implementation decisions:** Postgres 17.11 and Node 24.20.0 images are pinned by digest. Root `pnpm test:integration` orchestrates a unique Docker project; the container runs Vitest directly to avoid recursion. Compose uses fixed internal development URLs independent of exported host settings. Contracts/database emit declaration files for cross-workspace references; only the database package skips third-party declaration checking due to stable Drizzle’s optional-driver errors. Source checks remain strict. No unused drivers or source-level type suppressions were added.
 
+
+**Commit evidence:** explicit conditional user approval was followed by independent bug review, fix/follow-up, passing checks, staged-scope inspection, and commit `7dc32f0` (`[CHR-5] bootstrap local postgres`). No Security Review was run, as requested.
+
 ## Task 4: Shared handlers, real auth, and runtime adapters
 
-**Planned commit:** `[CHR-5] feat: add authenticated api`
+**Planned commit:** `[CHR-5] add authenticated api`
 
-**Input to Git (hook adds prefix):** `feat: add authenticated api`
+**Input to Git (hook adds prefix):** `add authenticated api`
 
 **Commit boundary:** this task’s listed files, tests, dependency/lockfile changes, and directly related documentation only.
 
@@ -177,8 +180,8 @@ Implement in this order. Task 1 installs the hook before the first repository co
 
 **Files:** packages/api files; apps/api local adapter; apps/web/api adapters and vercel.json; new API workspace manifests/configuration, root lockfile/scripts, Compose API service, `.env.example` server settings, and README API/authentication sections.
 
-- [ ] Create API workspace manifests/configurations, database-backed production composition, and server-only environment settings. Extend Compose with the local API service gated on successful initialization; it remains internal to the container network.
-- [ ] Write Vitest cases for the exact health/me contracts in the spec. For example:
+- [x] Create API workspace manifests/configurations, database-backed production composition, and server-only environment settings. Extend Compose with the local API service gated on successful initialization; it remains internal to the container network.
+- [x] Write Vitest cases for the exact health/me contracts in the spec. For example:
 
 ```ts
 const response = await handler(new Request('http://localhost/api/me'));
@@ -187,16 +190,21 @@ expect(deps.findUser).not.toHaveBeenCalled();
 expect(deps.ensureUser).not.toHaveBeenCalled();
 ```
 
-- [ ] Add cases: POST ignores a forged body identity and uses verified `sub`; GET absent user is 404; PUT is 405 with `Allow`; failed DB health is 503; unexpected DB errors return safe 500 without SQL/stack; user responses use `Cache-Control: no-store`.
-- [ ] Write auth-unit tests for missing bearer, expired/invalid token, wrong authorized party, and correct verified subject. Mock the Clerk SDK boundary, not the authentication result under test. Add environment tests proving missing variable errors contain names but not values and migration scripts do not require Clerk keys.
-- [ ] Run `pnpm test:unit` to establish the failing cases. Implement server env parsing, Clerk SDK verification with expected instance/origins, safe error conversion, and shared method/path dispatch.
-- [ ] Implement local request/response streaming conversion and thin Vercel adapters. Both receive full URLs, headers, methods, and body. Reject oversized bodies with a documented bounded limit (choose 64 KiB for these bootstrap endpoints) consistently in both adapters; avoid concatenating unbounded input.
-- [ ] Add adapter parity tests for GET, POST body forwarding, bearer header, status/JSON/cache/Allow headers, empty POST, unknown paths, and 64 KiB body boundary (exactly the limit accepted; limit + 1 rejected with 413). No hosted Vercel account is required for handler tests.
-- [ ] Configure SPA fallback without rewriting `/api` paths to HTML. Run unit/type checks and probe `/api/health` and unauthenticated `/api/me` from inside the API container; expect 200 and 401 respectively after DB initialization.
+- [x] Add cases: POST ignores a forged body identity and uses verified `sub`; GET absent user is 404; PUT is 405 with `Allow`; failed DB health is 503; unexpected DB errors return safe 500 without SQL/stack; user responses use `Cache-Control: no-store`.
+- [x] Write auth-unit tests for missing bearer, expired/invalid token, wrong authorized party, and correct verified subject. Mock the Clerk SDK boundary, not the authentication result under test. Add environment tests proving missing variable errors contain names but not values and migration scripts do not require Clerk keys.
+- [x] Run `pnpm test:unit` to establish the failing cases. Implement server env parsing, Clerk SDK verification with expected instance/origins, safe error conversion, and shared method/path dispatch.
+- [x] Implement local request/response streaming conversion and thin Vercel adapters. Both receive full URLs, headers, methods, and body. Reject oversized bodies with a documented bounded limit (choose 64 KiB for these bootstrap endpoints) consistently in both adapters; avoid concatenating unbounded input.
+- [x] Add adapter parity tests for GET, POST body forwarding, bearer header, status/JSON/cache/Allow headers, empty POST, unknown paths, and 64 KiB body boundary (exactly the limit accepted; limit + 1 rejected with 413). No hosted Vercel account is required for handler tests.
+- [x] Configure SPA fallback without rewriting `/api` paths to HTML. Run unit/type checks and probe `/api/health` and unauthenticated `/api/me` from inside the API container; expect 200 and 401 respectively after DB initialization.
 
-- [ ] Update README with API startup, required Clerk development settings, supported endpoints, and future Vercel adapter boundaries.
+- [x] Update README with API startup, required Clerk development settings, supported endpoints, and future Vercel adapter boundaries.
 
-- [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `feat: add authenticated api`. Verify the resulting subject is exactly `[CHR-5] feat: add authenticated api` and has no message body. If review is pending, leave the task uncommitted.
+- [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `add authenticated api`. Verify the resulting subject is exactly `[CHR-5] add authenticated api` and has no message body. If review is pending, leave the task uncommitted.
+
+
+**Verification evidence:** 84 unit tests pass; initial shared-handler/auth/env stubs produced 33 failing cases and adapter stubs produced seven failing parity cases. Real SDK cryptographic checks use an isolated JWKS boundary. Container startup waited for migrations/seeds; internal probes returned 200/401/404/405/413 and a safe 503 while the scratch database was stopped. Configured Clerk key/issuer consistency and a read-only JWKS request passed with no values displayed. Lint/type checks and the static build pass. The expanded image passed all 13 Postgres integration tests. Hosted Vercel invocation and real browser authentication remain unverified.
+
+**Execution decisions:** backend verification retrieves JWKS using the secret key, so no separate JWT PEM variable is needed. `skipLibCheck` is scoped to the shared API as well as DB because the installed Clerk/Drizzle third-party declarations fail strict declaration checking; source strictness and runtime tests remain. The latest session-provided Git rules take precedence over the earlier Conventional Commit/length policy for the prepared Task 4 subject. No staging/commit permission is assumed for this task.
 
 ## Task 5: Mobile-first shell and authenticated persistence flow
 
@@ -295,7 +303,7 @@ Recommended execution: native execution in this session after user review. The d
 
 ## Task 3 chest extension verification
 
-Seven new catalogue tests failed before the extension and then passed; the complete suite now has 13 Postgres integration tests and 25 unit tests. The tests cover foreign keys, duplicate pairs, restricted deletion, cross-type eligibility, reseeding preservation, and forced seed failure rollback. Security Review is skipped for the current review/commit step at the user’s request. Dedicated Bugbot type is not exposed; the independent review uses the Bugbot instructions and is reported as a fallback.
+Seven new catalogue tests failed before the extension and then passed; that checkpoint had 13 Postgres integration tests and 25 unit tests. The tests cover foreign keys, duplicate pairs, restricted deletion, cross-type eligibility, reseeding preservation, and forced seed failure rollback. Security Review is skipped for the current review/commit step at the user’s request. Dedicated Bugbot type is not exposed; the independent review uses the Bugbot instructions and is reported as a fallback.
 
 
 Task 3 follow-up: independent bug review identified one pg query-parameter destination override. Three regression cases failed before the fix; all 29 unit tests and 13 real-Postgres integration tests now pass. The reviewer confirmed the finding resolved. Lint, type checking, and production build pass. The latest session-provided Git instructions require an imperative subject without a Conventional Commit type and a 36-character total limit; the current Task 3 subject is therefore `[CHR-5] bootstrap local postgres` (input `bootstrap local postgres`). Earlier prepared subjects above record the previously approved convention.

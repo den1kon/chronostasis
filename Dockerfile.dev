@@ -9,6 +9,8 @@ COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY --chown=node:node apps/web/package.json ./apps/web/package.json
 COPY --chown=node:node packages/contracts/package.json ./packages/contracts/package.json
 COPY --chown=node:node packages/db/package.json ./packages/db/package.json
+COPY --chown=node:node packages/api/package.json ./packages/api/package.json
+COPY --chown=node:node apps/api/package.json ./apps/api/package.json
 RUN pnpm install --frozen-lockfile
 
 COPY --chown=node:node . .

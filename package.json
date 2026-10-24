@@ -19,7 +19,8 @@
     "db:generate": "pnpm --filter @chronostasis/db db:generate",
     "db:migrate": "pnpm --filter @chronostasis/db db:migrate",
     "db:seed": "pnpm --filter @chronostasis/db db:seed",
-    "test:integration": "node scripts/test-integration.mjs"
+    "test:integration": "node scripts/test-integration.mjs",
+    "dev:api": "pnpm --filter @chronostasis/api-server dev"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

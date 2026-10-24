@@ -1,6 +1,6 @@
 # CHR-5: Bootstrap design
 
-Status: approved for implementation on 2026-10-23. Tasks 1 and 2 are committed (`d645c1c`, `cd62a97`); Task 3 user/item persistence and Compose foundation were verified; the chest catalogue requested on 2026-10-24 is now implemented and covered by 13 Postgres integration tests. Task 3 passed the authorized independent bug review after fixing its single finding; Security Review was skipped for this step as requested. The application bootstrap remains in progress.
+Status: approved for implementation on 2026-10-23. Tasks 1 and 2 are committed (`d645c1c`, `cd62a97`); Task 3 user/item persistence and Compose foundation were verified; the chest catalogue requested on 2026-10-24 is now implemented and covered by 13 Postgres integration tests. Task 3 passed the authorized independent bug review after fixing its single finding; Security Review was skipped for this step as requested. Task 3 is committed as `7dc32f0`. Task 4 is implemented and locally verified, pending unstaged review; frontend sign-in and Playwright remain planned. The application bootstrap remains in progress.
 
 ## Intent
 
@@ -73,7 +73,8 @@ Contracts/database projects emit declarations for cross-workspace TypeScript ref
 
 - `VITE_CLERK_PUBLISHABLE_KEY`: public frontend key.
 - `CLERK_SECRET_KEY`: backend-only development instance key.
-- `CLERK_JWT_KEY`: backend public verification key where required by the selected SDK flow.
+- `CLERK_ISSUER`: HTTPS Frontend API origin for the same development instance. The selected backend SDK flow retrieves JWKS using `CLERK_SECRET_KEY`; no separate `CLERK_JWT_KEY` is required.
+- `API_PORT`: local API listener, default 3001; Compose fixes its internal port to 3001.
 - `DATABASE_URL`, `MIGRATION_DATABASE_URL`: backend-only connection URLs. Compose provides an internal default for local Postgres; document host-run overrides separately.
 - `CLERK_AUTHORIZED_PARTIES`: explicit allowed frontend origins, including `http://localhost:5173` locally.
 - `E2E_CLERK_USER_EMAIL`, `E2E_CLERK_USER_PASSWORD`: dedicated development test account, used only by the authenticated smoke-test setup.
@@ -159,3 +160,14 @@ Choose compatible patch versions, small UI styling details, test helpers, exact 
 The 2026-10-24 chest-catalogue addition has been implemented after the user approved continuation. Seven added Postgres tests failed before implementation, then passed with the additive migration and transactional seed. Security Review is skipped for this review/commit step per the user’s explicit instruction; this does not permanently change repository policy.
 
 A fresh Superpowers design builder check reported “nothing important left.” The implementation plan was self-reviewed against every acceptance criterion and the carried-over hook requirement. This is not implementation approval or a substitute for the final permission-gated Bugbot and Security Review runs.
+
+
+## Task 4 implementation evidence
+
+The local Node runtime and thin Vercel entrypoints now share the real Clerk/Drizzle production composition. Environment parsing validates required names, origins, and the listener port without exposing values. Vercel uses a modern SPA rewrite excluding `/api` and descendants; its pattern was checked with the parser shipped by the pinned Vercel runtime. Hosted execution is not claimed.
+
+Shared-handler/auth/environment tests were observed failing against initial stubs (33 failures), then passing. All seven adapter parity cases failed before adapter implementation, then passed, including raw UTF-8 bytes, bearer headers, response headers, empty POST, and fixed/chunked 64 KiB boundaries. Additional tests run the real Clerk verifier against an isolated RSA signing/JWKS fixture to check valid, expired, not-yet-valid, wrong-instance/origin, missing-origin, pending, and incorrectly signed sessions. The complete unit suite has 84 tests.
+
+The user configured the development settings locally. Key/issuer consistency and a read-only Clerk JWKS request succeeded without displaying values. Isolated Compose probes returned 200/401/404/405/413; stopping its database produced safe 503. A real user's browser session and authenticated POST/GET persistence remain Tasks 5–6. Task 4 adds no development authentication bypass.
+
+The shared API package scopes `skipLibCheck` to third-party declarations because Clerk 3.26.2's shared types include missing optional frontend modules and exact-optional-property errors, and imported Drizzle declarations include optional-driver errors. All source still uses the strict shared settings; the local runtime and web tooling retain declaration checking.

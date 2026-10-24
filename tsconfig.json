@@ -12,6 +12,12 @@
     },
     {
       "path": "./packages/db"
+    },
+    {
+      "path": "./packages/api"
+    },
+    {
+      "path": "./apps/api"
     }
   ]
 }
