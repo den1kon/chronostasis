@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md` (read it before executing).
 
-Status: approved for implementation by the user on 2026-10-23. Task 1 was reviewed and committed as `d645c1c`. Task 2 is implemented and verified, pending unstaged review and commit. Tasks 3–7 have not started.
+Status: approved for implementation by the user on 2026-10-23. Task 1 was reviewed and committed as `d645c1c`. Task 2 was reviewed and committed as `cd62a97`. Task 3 includes the verified user/item foundation and implemented chest catalogue. The user authorized bug review only (Security Review skipped for this step), followed by commit if clear and continuation to Task 4. Tasks 4–7 have not started.
 
 ## Global Constraints
 
@@ -19,6 +19,7 @@ Status: approved for implementation by the user on 2026-10-23. Task 1 was review
 - Proposed baseline: Node 24 LTS, pnpm 10, Postgres 17. Verify dependency engine compatibility at implementation time; pin exact selected Node/container and package-manager versions and commit the generated lockfile.
 - Nothing is staged or committed without the user's explicit unstaged-diff review approval.
 - Preserve user edits: the current 50-character limit excludes the ticket prefix.
+- Normalize chest/item metadata into `chests`, `items`, and `chest_items`; one initial chest type must not impose a singleton schema. The future opening flow awards exactly one eligible item.
 - Tailwind CSS / @tailwindcss/vite 4.3.3 belongs to Task 2’s existing commit; use utilities for component styling and `@theme` for shared tokens.
 - No development authentication bypass, hard-coded token, or test-only login endpoint is shipped.
 - Missing Clerk credentials must fail the authenticated suite with an actionable setup error, not silently skip it.
@@ -43,7 +44,7 @@ The user waived existing testing gates while the tooling is being established. E
 - `apps/web/api/health.ts`, `apps/web/api/me.ts`, `apps/web/vercel.json`: future Vercel adapters/routing configuration, not deployment.
 - `apps/api/package.json`, `tsconfig.json`, `src/server.ts`, `src/server.test.ts`: local Node server.
 - `packages/contracts/package.json`, `tsconfig.json`, `src/index.ts`: Zod public API schemas/types.
-- `packages/db/package.json`, `tsconfig.json`, `drizzle.config.ts`, `src/env.ts`, `src/client.ts`, `src/schema.ts`, `src/users.ts`, `src/seed.ts`, `drizzle/`, `tests/users.integration.test.ts`: database implementation and migration artifacts.
+- `packages/db/package.json`, `tsconfig.json`, `drizzle.config.ts`, `src/env.ts`, `src/client.ts`, `src/schema.ts`, `src/users.ts`, `src/seed.ts`, `src/seeding.ts`, `src/migrations.ts`, `drizzle/`, `tests/users.integration.test.ts`, `tests/catalogue.integration.test.ts`: database implementation and migration artifacts.
 - `packages/api/package.json`, `tsconfig.json`, `src/env.ts`, `src/auth.ts`, `src/handlers.ts`, `src/vercel.ts`, `src/index.ts`, corresponding `*.test.ts`: shared API and Vercel conversion.
 - `vitest.config.ts`, `vitest.integration.config.ts`, `playwright.config.ts`, `tests/e2e/auth.setup.ts`, `tests/e2e/signed-out.spec.ts`, `tests/e2e/bootstrap.spec.ts`, `scripts/check-e2e-env.mjs`: verification.
 - `.githooks/commit-msg`, `scripts/prefix-commit.mjs`, `scripts/install-hooks.mjs`, `scripts/test-hooks.mjs`: ticket prefix automation.
@@ -113,12 +114,14 @@ Implement in this order. Task 1 installs the hook before the first repository co
 - [x] Generate the initial lockfile with `pnpm install`, then verify reproducibility with `pnpm install --frozen-lockfile`. Run `pnpm lint`, `pnpm typecheck`, `pnpm test:hooks`, and `pnpm build`. Expected: successful exits. Do not add dummy unit tests merely to make an empty initial test suite appear meaningful; behavioral unit tests arrive with their owning tasks.
 - [x] Update README with the actual prerequisites, workspace layout, scripts, and the fact that Compose and authentication are not yet implemented at this commit.
 
-- [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `chore: scaffold typescript workspaces`. Verify the resulting subject is exactly `[CHR-5] chore: scaffold typescript workspaces` and has no message body. If review is pending, leave the task uncommitted.
+- [x] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `chore: scaffold typescript workspaces`. Verify the resulting subject is exactly `[CHR-5] chore: scaffold typescript workspaces` and has no message body. If review is pending, leave the task uncommitted.
 
 
 **Verification evidence:** after the Tailwind addition, frozen install, lint, typecheck, build, and all 37 hook tests passed. Tailwind utilities/theme colors were verified in the browser at 390 × 844 and 1280 × 800 CSS viewports with no horizontal overflow; desktop content remains capped at 640px. The temporary viewport override was reset. Temporary negative probes confirmed implicit-any/browser-Node-global type errors and the explicit-any lint rule; probes were removed afterward. Browser inspection confirmed the scaffold renders on port 5174 (local port 5173 is intercepted by OrbStack). `pnpm test:unit` exits 1 because no application unit tests exist yet; this is reported rather than bypassed.
 
-## Task 3: Database schema, migrations, and persistence
+**Commit evidence:** user approved the complete Tailwind-inclusive patch; committed as `cd62a97` with exactly one ticket prefix and no body.
+
+## Task 3: Database schema, normalized chest catalogue, and persistence
 
 **Planned commit:** `[CHR-5] feat: add local postgres persistence`
 
@@ -129,19 +132,34 @@ Implement in this order. Task 1 installs the hook before the first repository co
 **Interfaces**
 
 - Consumes: `DATABASE_URL` and optional `MIGRATION_DATABASE_URL`; database-only environment validation.
-- Produces: `createDatabase(connectionString: string)` returning a Drizzle client/pool wrapper; `ensureUser(clerkUserId: string): Promise<PublicUser>` and `findUser(clerkUserId: string): Promise<PublicUser | null>` through an injected database/repository factory. `PublicUser = { id: string; clerkUserId: string }` is owned by contracts. The database wrapper exposes `close(): Promise<void>` for scripts/tests and a lightweight `probe(): Promise<void>`.
+- Produces: `createDatabase(connectionString: string)` returning a Drizzle client/pool wrapper; `ensureUser(clerkUserId: string): Promise<PublicUser>` and `findUser(clerkUserId: string): Promise<PublicUser | null>` through an injected database/repository factory. `PublicUser = { id: string; clerkUserId: string }` is owned by contracts. The database wrapper exposes `close(): Promise<void>` for scripts/tests and a lightweight `probe(): Promise<void>`. Add `seedCatalogue(database: Database): Promise<void>` to atomically upsert items, chest types, and eligibility relationships; update the seed entrypoint and callers to use it.
 
-**Files:** contracts/database files in the file map, generated migrations, integration Vitest config; root `Dockerfile.dev`, `compose.yaml`, `.env.example`, workspace/lockfile updates; README database setup section. At this task boundary Compose contains Postgres and the one-shot initializer; later tasks add API/frontend services.
+**Files:** contracts/database files in the file map, generated migrations, integration Vitest config; root `Dockerfile.dev`, `compose.yaml`, `.env.example`, `scripts/test-integration.mjs`, workspace/lockfile updates, shared TypeScript project-reference configuration; README database setup section, current/planned `ARCHITECTURE.md`, AGENTS.md verification/normalization rules, and spec/plan progress. At this task boundary Compose contains Postgres and the one-shot initializer; later tasks add API/frontend services.
 
-- [ ] Add manifests/configuration for contracts and database workspaces; add `db:migrate`, `db:seed`, and `test:integration` root commands. Define `PublicUserSchema`, `UserResponseSchema`, `HealthResponseSchema`, and `ApiErrorSchema` in contracts. Export inferred types only from these schemas.
-- [ ] Write database integration tests using a separate test database: `ensureUser` twice and concurrently returns the same ID; `findUser` for another Clerk subject returns null; distinct subjects remain separate. Assert the users table has exactly one row for the repeated subject.
-- [ ] Run `pnpm test:integration` and confirm these behavior tests fail before repository implementation. Supply an isolated test URL; refuse a test reset against the regular development URL.
-- [ ] Implement `users` and `items` exactly as specified, using a uniqueness constraint and SQL conflict-safe upsert rather than select-before-insert. Use `pg` with bounded pooling and Drizzle; close pools in one-shot scripts.
-- [ ] Generate migrations using Drizzle Kit; inspect SQL for keys, nullability, UUID defaults, and timezone-aware timestamps. Implement a stable-ID seed upsert for the three specified items.
-- [ ] Create the development Docker image and Compose Postgres/initializer services with a pinned Postgres 17 image, a persistent named database volume, and a `pg_isready` health check. Wire initialization to migrate then seed; do not reference not-yet-created API/frontend services. Add local database URL examples without exposing Postgres on the host by default.
-- [ ] Run migrations and seeds twice against isolated Postgres; assert exactly three catalogue IDs remain and integration tests pass. Verify initializer failures propagate as a nonzero exit; test dependent-service gating in Task 5 once those services exist. Recreate Postgres and verify seeded/user data persists. Run `docker compose config --quiet` without printing resolved secrets. Update README with migration/seed and data-retention commands.
+- [x] Add manifests/configuration for contracts and database workspaces; add `db:migrate`, `db:seed`, and `test:integration` root commands. Define `PublicUserSchema`, `UserResponseSchema`, `HealthResponseSchema`, and `ApiErrorSchema` in contracts. Export inferred types only from these schemas.
+- [x] Write database integration tests using a separate test database: `ensureUser` twice and concurrently returns the same ID; `findUser` for another Clerk subject returns null; distinct subjects remain separate. Assert the users table has exactly one row for the repeated subject.
+- [x] Run `pnpm test:integration` and confirm these behavior tests fail before repository implementation. Supply an isolated test URL; refuse a test reset against the regular development URL.
+- [x] Implement `users` and `items` exactly as specified, using a uniqueness constraint and SQL conflict-safe upsert rather than select-before-insert. Use `pg` with bounded pooling and Drizzle; close pools in one-shot scripts.
+- [x] Generate migrations using Drizzle Kit; inspect SQL for keys, nullability, UUID defaults, and timezone-aware timestamps. Implement a stable-ID seed upsert for the three specified items.
+- [x] Create the development Docker image and Compose Postgres/initializer services with a pinned Postgres 17 image, a persistent named database volume, and a `pg_isready` health check. Wire initialization to migrate then seed; do not reference not-yet-created API/frontend services. Add local database URL examples without exposing Postgres on the host by default.
+- [x] Run migrations and seeds twice against isolated Postgres; assert exactly three catalogue IDs remain and integration tests pass. Verify initializer failures propagate as a nonzero exit; test dependent-service gating in Task 5 once those services exist. Recreate Postgres and verify seeded/user data persists. Run `docker compose config --quiet` without printing resolved secrets. Update README with migration/seed and data-retention commands.
+
+### Chest-catalogue extension requested on 2026-10-24
+
+- [x] Create `packages/db/tests/catalogue.integration.test.ts` first. Migrate and seed an isolated database; assert exactly one initial chest `{ id: 'basic-chest', name: 'Basic chest' }`, the three specified items, and exactly the three expected `(chest_id, item_id)` pairs. Observe the tests fail before implementing the chest tables.
+- [x] Extend `packages/db/src/schema.ts` with `chests` (text primary-key `id`, non-null `name`) and `chest_items` (non-null text `chest_id`/`item_id` foreign keys, composite primary key, restrictive deletion). Keep metadata on its owning table. Do not add ownership, opening history, reward weights, or arrays of item IDs.
+- [x] Run `pnpm db:generate --name chest_catalogue` to produce an additive migration and matching snapshot/journal changes. Preserve `0000_bootstrap.sql` and its snapshot. Review SQL for both foreign keys and the composite primary key; an already-initialized user/item database must upgrade without losing data.
+- [x] Replace `seedItems` with `seedCatalogue` in `src/seeding.ts`, the seed entrypoint, and existing tests. Use one database transaction: upsert all item definitions, then the `basic-chest` definition, then the three eligibility links. Use conflict-safe insertion for links. Do not delete other definitions or links on repeated seeding.
+- [x] Add real integration assertions that duplicate eligibility links are rejected, missing chest/item references are rejected, referenced definitions cannot be silently deleted, and an existing item can be linked to a second chest without changing its original link. Isolate/clean up test-created definitions so file order and repeat runs do not affect initial-seed assertions.
+- [x] Run migrations and catalogue seeds twice against an isolated database and verify stable counts: 1 initial chest, 3 items, 3 links. Verify the additive migration preserves existing users/items, and verify later added chest definitions survive reseeding. Update Compose verification expectations to cover these counts and persistence after container recreation.
+- [x] Update README and `ARCHITECTURE.md` from planned to implemented only after verification. Rerun frozen install, lint, typecheck, unit/integration/hook tests, production build, and migration/schema consistency check. Preserve the prepared Task 3 commit subject and unstaged-review gate.
 
 - [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `feat: add local postgres persistence`. Verify the resulting subject is exactly `[CHR-5] feat: add local postgres persistence` and has no message body. If review is pending, leave the task uncommitted.
+
+
+**Historical verification evidence (before chest extension):** 25 unit tests and 6 real-Postgres integration tests passed. Isolated Compose verification ran the initializer twice (exactly 3 catalogue rows), recreated the database container while retaining the same user UUID and seed rows, checked nonzero migration failure/skipped seed with no secret disclosure, and confirmed no published database port. Verification projects/volumes were removed afterward. Final frozen install, lint, typecheck, production build, all 37 hook tests, and migration/schema consistency check passed. `pnpm db:generate` reported no schema changes for the earlier user/item schema. Chest extension evidence is recorded separately below.
+
+**Implementation decisions:** Postgres 17.11 and Node 24.20.0 images are pinned by digest. Root `pnpm test:integration` orchestrates a unique Docker project; the container runs Vitest directly to avoid recursion. Compose uses fixed internal development URLs independent of exported host settings. Contracts/database emit declaration files for cross-workspace references; only the database package skips third-party declaration checking due to stable Drizzle’s optional-driver errors. Source checks remain strict. No unused drivers or source-level type suppressions were added.
 
 ## Task 4: Shared handlers, real auth, and runtime adapters
 
@@ -247,7 +265,7 @@ expect(deps.ensureUser).not.toHaveBeenCalled();
 **Files:** README.md, ARCHITECTURE.md, AGENTS.md, design spec and this plan.
 
 - [ ] Write README setup and troubleshooting from the actual tested commands, including Docker-only operation, optional host pnpm, Clerk setup, data retention/reset, migrations, seeds, tests, and hooks.
-- [ ] After implementation verification, create `ARCHITECTURE.md` describing actual workspace/runtime/auth/data/test flows, the Tailwind/Vite styling pipeline, and future hosting boundaries. Do not describe undeployed infrastructure as live.
+- [ ] After implementation verification, finalize the existing `ARCHITECTURE.md` to describe actual workspace/runtime/auth/data/test flows, the Tailwind/Vite styling pipeline, and future hosting boundaries. Do not describe undeployed infrastructure as live.
 - [ ] Finalize AGENTS.md with actual commands and documentation upkeep. Preserve commit review, subagent permission, subject length excluding prefix, rewriting provenance, and PR restrictions.
 - [ ] Review all documentation for ticket-induced changes; mark design decisions changed during execution and checkbox states honestly. Record omitted/deferred scope and credentials-dependent verification.
 - [ ] Run `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`, plus clean Compose startup, restart/persistence, and initializer-failure checks. Record exact outcomes. Do not invoke destructive database resets against developer data.
@@ -265,12 +283,19 @@ expect(deps.ensureUser).not.toHaveBeenCalled();
 
 - Ticket workflow and hook: Task 1; available before the first planned commit.
 - Strict workspace tooling and Tailwind integration/CSS migration: Task 2; additional test commands arrive with their owning implementations.
-- Database: Task 3; schema, migrations, seeds, isolated tests, and persistent local Postgres.
+- Database: Task 3; normalized users/items/chests/eligibility schema, additive migrations, idempotent catalogue seeds, foreign-key/composite-key tests, and persistent local Postgres.
 - API/auth/runtime adapters: Task 4; real auth enforcement, safe failures, adapter parity, and internal API service.
 - Complete Docker Compose and mobile frontend connectivity: Task 5; startup ordering, hot reload, dependency refresh, persistence, initialization failure, and authenticated POST/GET flow.
 - Playwright smoke coverage: Task 6; real Clerk sign-in and no silently skipped acceptance.
-- Current architecture and finalized rules: Task 7; `ARCHITECTURE.md` created after implementation verification.
+- Current architecture and finalized rules: Task 7; `ARCHITECTURE.md` starts as an explicitly labeled current/planned overview and is finalized after implementation verification.
 - Each of the seven tasks contains one prepared commit subject, scoped file ownership, verification steps, and its own permission-gated commit checkpoint. Directly related documentation is included in each task; final acceptance is not an extra empty commit.
 - Deployment, PWA/native packaging, and product functionality remain deferred.
 
 Recommended execution: native execution in this session after user review. The design builder check is a planning check, not the final Bugbot/Security Review gate. No implementation-review permission is assumed from this plan.
+
+## Task 3 chest extension verification
+
+Seven new catalogue tests failed before the extension and then passed; the complete suite now has 13 Postgres integration tests and 25 unit tests. The tests cover foreign keys, duplicate pairs, restricted deletion, cross-type eligibility, reseeding preservation, and forced seed failure rollback. Security Review is skipped for the current review/commit step at the user’s request. Dedicated Bugbot type is not exposed; the independent review uses the Bugbot instructions and is reported as a fallback.
+
+
+Task 3 follow-up: independent bug review identified one pg query-parameter destination override. Three regression cases failed before the fix; all 29 unit tests and 13 real-Postgres integration tests now pass. The reviewer confirmed the finding resolved. Lint, type checking, and production build pass. The latest session-provided Git instructions require an imperative subject without a Conventional Commit type and a 36-character total limit; the current Task 3 subject is therefore `[CHR-5] bootstrap local postgres` (input `bootstrap local postgres`). Earlier prepared subjects above record the previously approved convention.

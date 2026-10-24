@@ -1,7 +1,17 @@
 {
   "files": [],
   "references": [
-    { "path": "./apps/web" },
-    { "path": "./tsconfig.tooling.json" }
+    {
+      "path": "./apps/web"
+    },
+    {
+      "path": "./tsconfig.tooling.json"
+    },
+    {
+      "path": "./packages/contracts"
+    },
+    {
+      "path": "./packages/db"
+    }
   ]
 }

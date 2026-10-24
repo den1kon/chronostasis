@@ -1,6 +1,6 @@
 # CHR-5: Bootstrap design
 
-Status: approved for implementation on 2026-10-23. Task 1 is committed (`d645c1c`); Task 2 workspace/scaffold is implemented and verified, pending unstaged review. The application bootstrap remains in progress.
+Status: approved for implementation on 2026-10-23. Tasks 1 and 2 are committed (`d645c1c`, `cd62a97`); Task 3 user/item persistence and Compose foundation were verified; the chest catalogue requested on 2026-10-24 is now implemented and covered by 13 Postgres integration tests. Task 3 passed the authorized independent bug review after fixing its single finding; Security Review was skipped for this step as requested. The application bootstrap remains in progress.
 
 ## Intent
 
@@ -12,10 +12,10 @@ The user requested the spec and plan together. The user subsequently approved im
 
 - TypeScript, React, Vite, Tailwind CSS, pnpm workspaces, Vercel Functions, Neon, Postgres, Drizzle, and Clerk.
 - Working Docker Compose development setup, migrations, seed data, end-to-end persistence, environment configuration, strict lint/type checks, unit tests, and Playwright smoke tests.
-- README, design spec, implementation plan, finalized AGENTS.md, and an accurate `ARCHITECTURE.md` after implementation.
+- README, design spec, implementation plan, finalized AGENTS.md, and an accurate `ARCHITECTURE.md`. The user requested architecture documentation now; distinguish implemented behavior from planned additions and finalize it after implementation.
 - Deployment is a separate ticket: no Vercel project linking, cloud deployment, or Neon resource creation in CHR-5.
 - PWA installation/service worker, Capacitor/iOS packaging, notifications, focus timer, chest opening, loot selection, and inventory behavior are deferred.
-- The user waived pre-existing testing requirements while tests are being established. There are no test commands today. Missing tooling does not block scaffolding; once established, the new checks remain acceptance criteria. Never report an unavailable or skipped check as passed.
+- The user waived pre-existing testing requirements while tests are being established. At the initial bootstrap there were no test commands; the existing user/item foundation now has unit, integration, and hook checks. Missing tooling does not block scaffolding; once established, the new checks remain acceptance criteria. Never report an unavailable or skipped check as passed.
 - Final Bugbot and Security Review runs require a separate user permission request after implementation and verification. Findings must be fixed or explicitly ignored by the user, and ticket completion requires explicit user approval.
 
 ## Approaches considered
@@ -49,7 +49,7 @@ Use standard `pg` pooling with Drizzle for local Postgres and the future pooled 
 
 ## Local startup
 
-Baseline: Node 24 LTS, pnpm 10, Postgres 17. Task 2 pins Node 24.20.0, pnpm 10.34.7, TypeScript 6.0.3, React 19.3.1, Vite 8.3.5, and Tailwind CSS / @tailwindcss/vite 4.3.3 with compatible lint/test tooling and a generated lockfile. TypeScript 7 is outside the selected lint tooling’s peer range, so TypeScript 6 is intentional. Pin the exact Postgres 17 image in Task 3 after verification. Do not silently change the baseline if incompatible; report the constraint.
+Baseline: Node 24 LTS, pnpm 10, Postgres 17. Task 2 pins Node 24.20.0, pnpm 10.34.7, TypeScript 6.0.3, React 19.3.1, Vite 8.3.5, and Tailwind CSS / @tailwindcss/vite 4.3.3 with compatible lint/test tooling and a generated lockfile. TypeScript 7 is outside the selected lint tooling’s peer range, so TypeScript 6 is intentional. Task 3 pins the verified Postgres 17.11 and Node 24.20.0 image digests in Compose/Dockerfile.dev. Do not silently change the baseline if incompatible; report the constraint.
 
 After copying `.env.example` to `.env` and supplying Clerk development credentials, `docker compose up --build` starts:
 
@@ -58,6 +58,14 @@ After copying `.env.example` to `.env` and supplying Clerk development credentia
 3. Local API and frontend services, dependent on successful database initialization.
 
 Use a shared development image, non-root application processes where practical, source mounts for hot reload, and container-owned dependency volumes. Include package manifests and lockfile in installation cache layers. If workspace manifests change, document the rebuild/dependency refresh command. Postgres restart retains data; seeds are idempotent. Database initialization failure must prevent application services from reporting ready. Tests use a separate Compose project/volume and must never reset the developer database.
+
+## Task 3 local database implementation
+
+The database slice currently starts Postgres and a health-gated migration/seed initializer only; frontend/API services are added later. Compose always uses its fixed internal development connection, independent of host `DATABASE_URL` exports. CLI commands outside Compose read explicit environment settings and never load Clerk configuration.
+
+Integration tests run in a unique Compose project with their own `db-test` service and volume. `pnpm test:integration` builds and runs the suite, then cleans up only that invocation's resources. Test destination validation requires an explicit local `chronostasis_test` URL and rejects application destinations before opening a connection. Tests use unique user subjects and no database reset/truncation. Local verification covered initializer repeatability/failure and volume retention across container recreation.
+
+Contracts/database projects emit declarations for cross-workspace TypeScript references. Stable Drizzle 0.45.4 declaration files include errors in unrelated optional drivers, so `skipLibCheck` is scoped to the database package. Its source code is still strictly checked; browser/contracts/tooling declaration checking remains enabled. Runtime behavior is tested against Postgres rather than mocking the ORM.
 
 ## Environment and authentication
 
@@ -80,6 +88,14 @@ Initial schema deliberately stays small:
 
 - `users`: `id` UUID primary key, unique non-null `clerk_user_id`, `created_at`, and `updated_at` timestamps with timezone. No copied email/profile data is needed.
 - `items`: stable text `id` primary key and non-null `name`. Seed three illustrative catalogue records idempotently: `rusty-key` / Rusty key; `copper-ring` / Copper ring; `blue-gem` / Blue gem.
+- `chests`: chest-type catalogue with stable text `id` primary key and non-null `name`. Seed one initial definition: `basic-chest` / Basic chest. Do not enforce a single-row limit or bake a singleton into the schema; later tickets may add more types.
+- `chest_items`: eligibility relation with non-null `chest_id` referencing `chests.id`, non-null `item_id` referencing `items.id`, and composite primary key `(chest_id, item_id)`. Use restrictive foreign keys to prevent silent loss of referenced catalogue definitions. Seed three relationships from `basic-chest` to the three initial items.
+
+Normalize catalogue metadata: chest names live only in `chests`, item names only in `items`, and relationships only in `chest_items`. A chest can offer many possible items and the same item can appear in multiple chest types. Do not put item-ID arrays/JSON on a chest, a single chest foreign key on an item, or copied names on junction rows. No reward weights, rarity system, or duplicate derived fields are needed for this ticket.
+
+`chests` describes reusable chest types, not user-owned instances or opening history. A pool of three eligible items does not mean three rewards: the future opening flow still selects exactly one item. User-owned chests, session/reward records, inventory, and reward selection remain separate future work. Creating a type definition must not grant a user a chest or an item.
+
+Extend the uncommitted Task 3 implementation with an additive Drizzle migration after `0000_bootstrap.sql`; do not rewrite the earlier migration because it may already have been applied to a developer's database. Extend catalogue seeding to upsert items/chests before linking them, atomically in a transaction. Repeated seeding must not duplicate records or remove catalogue definitions added later. Add integration coverage for exact initial contents, both foreign keys, composite-key uniqueness, linking one item to multiple chest types, and migration/seed repeatability.
 
 Session/inventory schemas belong to their feature tickets, where their lifecycle rules can be specified.
 
@@ -110,7 +126,7 @@ After authentication, initialize the application user with POST `/api/me`, then 
 
 Root commands: `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`. Strict TypeScript, type-aware ESLint with zero warnings, and no unexplained `any`/blanket lint suppression. Unit tests use Vitest; smoke tests use Playwright Chromium with a mobile viewport.
 
-Unit tests mock auth/database dependency boundaries and cover auth-before-DB behavior, verified identity, safe failures, method restrictions, environment validation, and frontend API error states. Real local Postgres integration tests cover migration/seed repeatability, upsert concurrency, and user isolation. Adapter parity tests execute the same request cases against local and Vercel adapters.
+Unit tests mock auth/database dependency boundaries and cover auth-before-DB behavior, verified identity, safe failures, method restrictions, environment validation, and frontend API error states. Real local Postgres integration tests cover migration/seed repeatability, upsert concurrency, user isolation, and normalized chest/item catalogue relationships (foreign keys, composite uniqueness, and multiple chest types). Adapter parity tests execute the same request cases against local and Vercel adapters.
 
 Playwright uses Clerk's supported testing helpers and a dedicated development account, performs real sign-in, proves POST/GET persistence and reload recovery, checks the inventory route on a narrow viewport, and verifies unauthenticated API rejection. Testing tokens bypass bot detection; they do not replace authenticated sessions. Missing Clerk credentials must fail the authenticated suite with an actionable setup error, not silently skip it. Signed-out smoke coverage can run independently, but cannot stand in for authenticated acceptance.
 
@@ -122,7 +138,7 @@ Before pnpm exists, activation uses `node scripts/install-hooks.mjs`; Task 2 add
 
 README covers prerequisites, external Clerk setup, env variables, container lifecycle, hot reload, data retention/reset, migrations/seeds, test account setup, every verification command, hook activation, and troubleshooting. Add `.dockerignore` so local secrets and `.git` are excluded from build context.
 
-Create `ARCHITECTURE.md` only after implementation and verification, documenting the actual workspace structure, HTTP/auth/data flows, local runtime, future hosting boundary, database ownership, test layers, and remaining limitations. Describe Vercel/Neon as intended hosting until separately deployed. Keep design/plan status aligned with reality; preserve historical decisions while recording material changes.
+Maintain `ARCHITECTURE.md` from the current documentation update onward, clearly labeling implemented and planned components; after implementation and verification, finalize it with the actual workspace structure, HTTP/auth/data flows, local runtime, future hosting boundary, database ownership, test layers, and remaining limitations. Describe Vercel/Neon as intended hosting until separately deployed. Keep design/plan status aligned with reality; preserve historical decisions while recording material changes.
 
 AGENTS.md requires documentation upkeep, one implementation-plan task per Git commit with a prepared Conventional Commit subject, and executable commands once they exist. Each task includes its tests and directly related documentation. Planned subjects never bypass explicit unstaged-review confirmation before staging or committing. Preserve user edits: the current 50-character limit excludes the ticket prefix. No staging, committing, PR creation, final review dispatch, or completion claim is authorized by writing this spec/plan.
 
@@ -139,5 +155,7 @@ AGENTS.md requires documentation upkeep, one implementation-plan task per Git co
 Choose compatible patch versions, small UI styling details, test helpers, exact migration filenames, and supported Clerk sign-in component configuration. Inspect installed SDK documentation before choosing its current API signatures. Do not add a state-management framework, job queue, cache service, PWA service worker, or additional hosting platform for this ticket.
 
 ## Planning review
+
+The 2026-10-24 chest-catalogue addition has been implemented after the user approved continuation. Seven added Postgres tests failed before implementation, then passed with the additive migration and transactional seed. Security Review is skipped for this review/commit step per the user’s explicit instruction; this does not permanently change repository policy.
 
 A fresh Superpowers design builder check reported “nothing important left.” The implementation plan was self-reviewed against every acceptance criterion and the carried-over hook requirement. This is not implementation approval or a substitute for the final permission-gated Bugbot and Security Review runs.

@@ -48,9 +48,9 @@
   `node --check scripts/test-hooks.mjs`.
 - Workspace checks: `pnpm lint`, `pnpm typecheck`, `pnpm test:hooks`, and
   `pnpm build`.
-- `pnpm test:unit` runs Vitest. No application test files exist at Task 2;
-  its nonzero empty-suite result must not be reported as passing.
-- Integration and Playwright commands are added as CHR-5 establishes them.
+- Unit tests: `pnpm test:unit`.
+- Isolated Postgres integration tests: `pnpm test:integration` (requires Docker).
+- Playwright is added later. Missing/empty suites must not be reported as passing.
 - Use the Node.js and pnpm versions pinned in `.node-version` and
   `package.json`; install dependencies with `pnpm install --frozen-lockfile`.
 
@@ -74,6 +74,12 @@
   user, and the user explicitly approves ticket completion.
 - Approval of the unstaged diff does not by itself constitute approval
   of ticket completion.
+
+## Database design
+
+- Store entity metadata once and model relationships with foreign keys.
+- Use junction tables with composite primary keys for many-to-many
+  relationships instead of ID arrays or duplicated entity data.
 
 ## Documentation upkeep
 

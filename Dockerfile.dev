@@ -1,0 +1,15 @@
+FROM node:24.20.0-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e
+
+RUN npm install --global --no-audit --no-fund pnpm@10.34.7
+WORKDIR /workspace
+RUN chown node:node /workspace
+USER node
+
+COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY --chown=node:node apps/web/package.json ./apps/web/package.json
+COPY --chown=node:node packages/contracts/package.json ./packages/contracts/package.json
+COPY --chown=node:node packages/db/package.json ./packages/db/package.json
+RUN pnpm install --frozen-lockfile
+
+COPY --chown=node:node . .
+CMD ["pnpm", "dev"]

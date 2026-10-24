@@ -2,8 +2,15 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
-    "lib": ["ES2023"],
-    "types": ["node"]
+    "lib": [
+      "ES2023"
+    ],
+    "types": [
+      "node"
+    ]
   },
-  "include": ["vitest.config.ts"]
+  "include": [
+    "vitest.config.ts",
+    "vitest.integration.config.ts"
+  ]
 }

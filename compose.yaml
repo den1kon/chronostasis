@@ -1,0 +1,62 @@
+name: chronostasis
+
+x-app: &app
+  image: chronostasis-dev:chr-5
+  build:
+    context: .
+    dockerfile: Dockerfile.dev
+  init: true
+
+x-postgres: &postgres
+  image: postgres:17-alpine@sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U chronostasis -d $$POSTGRES_DB"]
+    interval: 2s
+    timeout: 3s
+    retries: 20
+    start_period: 5s
+
+services:
+  db:
+    <<: *postgres
+    environment:
+      POSTGRES_USER: chronostasis
+      POSTGRES_PASSWORD: chronostasis
+      POSTGRES_DB: chronostasis
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  db-init:
+    <<: *app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Development-only credentials on the internal network. Do not interpolate
+      # host DATABASE_URL here: an exported production URL must not be migrated.
+      DATABASE_URL: postgresql://chronostasis:chronostasis@db:5432/chronostasis
+    command: ["sh", "-c", "pnpm db:migrate && pnpm db:seed"]
+
+  db-test:
+    <<: *postgres
+    profiles: [test]
+    environment:
+      POSTGRES_USER: chronostasis
+      POSTGRES_PASSWORD: chronostasis
+      POSTGRES_DB: chronostasis_test
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+
+  test:
+    <<: *app
+    profiles: [test]
+    depends_on:
+      db-test:
+        condition: service_healthy
+    environment:
+      TEST_DATABASE_URL: postgresql://chronostasis:chronostasis@db-test:5432/chronostasis_test
+    command: ["pnpm", "exec", "vitest", "run", "--config", "vitest.integration.config.ts"]
+
+volumes:
+  postgres_data:
+  postgres_test_data:

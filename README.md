@@ -4,11 +4,12 @@ A mobile-first focus application where completed sessions will unlock chests con
 
 ## Bootstrap status
 
-CHR-5 is in progress on `maintenance/CHR-5`. The ticket workflow and commit hook are committed. The TypeScript workspace and minimal React/Vite/Tailwind shell are implemented and pending unstaged review. Docker Compose services, authentication, the database, and automated browser tests are not yet implemented. Deployment is a separate ticket.
+CHR-5 is in progress on `maintenance/CHR-5`. The ticket workflow and commit hook are committed. The TypeScript workspace and React/Vite/Tailwind shell are committed (`cd62a97`). Task 3 has a verified local Postgres/user/item foundation. Its normalized chest catalogue is implemented with an additive migration, transactional seeds, and relational-constraint tests. Task 3 passed the authorized independent bug review after fixing its single finding; Security Review was skipped for this step as requested. Authentication, the HTTP API, and automated browser tests are not yet implemented. Deployment is a separate ticket.
 
 - [Design specification](docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md)
 - [Implementation plan](docs/superpowers/plans/2026-10-23-chr-5-bootstrap.md)
 - [Repository instructions](AGENTS.md)
+- [Current and planned architecture](ARCHITECTURE.md)
 
 ## Local development
 
@@ -29,16 +30,89 @@ If port 5173 is occupied or intercepted by another local service, select an avai
 pnpm dev --port 5174
 ```
 
-Vite uses a strict port setting and does not silently choose another port. Restarting or stopping the server does not modify application data; no database exists yet.
+Vite uses a strict port setting and does not silently choose another port. Restarting or stopping the frontend server does not affect the separately managed Postgres data. The frontend is not connected to the database until the API/authentication tasks are implemented.
 
 ## Workspace layout
 
 - `apps/web`: React frontend, Vite with the Tailwind CSS plugin, and separate browser/tooling TypeScript configurations.
-- `scripts`: dependency-free Git-hook processor, installer, and behavior tests.
+- `packages/contracts`: Zod public-response schemas and their inferred TypeScript types.
+- `packages/db`: server-only Drizzle schema, repository, connection configuration, migrations, seeds, and persistence tests.
+- `scripts`: Git-hook processor/installer/tests and the isolated Docker integration-test runner.
 - Root configuration: shared strict TypeScript settings, ESLint, Vitest, workspace/package-manager configuration, and the lockfile.
 - `docs/superpowers`: the CHR-5 design and implementation plan.
 
-Future API, public-contract, and database workspaces will be introduced with their implementations. Browser code may not import server API/database packages or use Node globals. Runtime output, dependencies, secrets, and local execution scratch files are excluded from Git; `.dockerignore` also excludes them from future Docker build contexts.
+API workspaces will be introduced with their implementation. Browser code may not import server API/database packages or use Node globals. Runtime output, dependencies, secrets, and local execution scratch files are excluded from Git; `.dockerignore` also excludes them from future Docker build contexts.
+
+## Local Postgres and migrations
+
+Prerequisite: Docker with Compose and a running Docker daemon. Docker images pin Node 24.20.0 and Postgres 17.11 by digest; pnpm 10.34.7 is installed inside the development image. Application processes run as the image's non-root `node` user. Host pnpm is optional for the Docker-only setup.
+
+Copy the environment example for reference:
+
+```sh
+cp .env.example .env
+```
+
+Start the current Compose setup:
+
+```sh
+docker compose up --build
+```
+
+At Task 3 this starts **only Postgres and the one-shot migration/seed initializer**. The initializer waits for database health, applies migrations, then seeds the catalogue and exits successfully. The database remains running. Frontend/API containers arrive in later tasks; run `pnpm dev` separately to view the disconnected scaffold.
+
+The development database uses the internal hostname `db`, database/user/password `chronostasis`, and a persistent project-owned named volume. These are local fixtures, not deployment credentials. No database port is published to the host. Compose deliberately fixes its database destinations: an exported host `DATABASE_URL` cannot redirect its initializer toward another database. Deployment and Neon resources are a separate ticket.
+
+Run the initializer again safely, or inspect the database:
+
+```sh
+docker compose run --rm --build db-init
+docker compose exec db psql -U chronostasis -d chronostasis
+```
+
+For individual migration/seed commands after the image has been built:
+
+```sh
+docker compose run --rm db-init pnpm db:migrate
+docker compose run --rm db-init pnpm db:seed
+```
+
+`pnpm db:generate --name <description>` generates SQL/snapshot artifacts from `packages/db/src/schema.ts` without a database connection. Review and version these artifacts with the schema change. `pnpm db:migrate` and `pnpm db:seed` also work on the host if you explicitly supply a reachable PostgreSQL `DATABASE_URL`. Host commands do not automatically load `.env`; Compose-internal hostnames are not reachable from the host without an intentional port override. `MIGRATION_DATABASE_URL` is optional and falls back to `DATABASE_URL`; it selects a direct connection for migrations. Clerk configuration is not needed for any database command.
+
+The initial foundation tables are `users` (UUID identity, unique Clerk subject, timezone-aware creation/update timestamps) and `items` (stable catalogue ID/name). The catalogue seed upserts Rusty key, Copper ring, Blue gem, and one Basic chest linked to all three eligible items. Repeated execution does not duplicate catalogue rows or remove later definitions/links. User initialization uses a single conflict-safe SQL upsert; returning users retain their UUID, including concurrent requests. Hosted connections enforce certificate verification; local Compose/loopback connections use the local non-TLS server. Pools are bounded and one-shot commands close them on completion/failure.
+
+### Normalized chest catalogue
+
+Task 3 adds `chests` for reusable chest types and `chest_items` for eligible loot. The seed creates one type, `basic-chest` / Basic chest, linked to the three initial items. Chest names stay in `chests`, item names in `items`; the junction stores only foreign keys and its composite primary key. The same item may belong to multiple chest types, and more chest types can be added without changing the schema.
+
+The three links define possible rewards, not three contents granted on opening. The later opening feature will award exactly one eligible item. Ownership, opening history, and reward selection are not implemented by the catalogue. The additive `0001_chest_catalogue.sql` preserves the original user/item migration. Transactional `seedCatalogue` replaces item-only seeding; foreign keys restrict deletion of referenced definitions and the composite key rejects duplicate links. Integration tests cover these constraints, shared eligibility, reseeding, and rollback.
+
+Stop/recreate containers while retaining data:
+
+```sh
+docker compose down
+docker compose up --build
+```
+
+`docker compose down --volumes` also deletes the development database and should be used only for an intentional data reset. It is never part of integration-test cleanup. After changing dependencies or source at this stage, rebuild the image; source mounts/hot reload for containerized application services are added with those services.
+
+If initialization fails, fix the database settings/service and rerun `docker compose run --rm --build db-init`. The initializer exits nonzero and does not continue to seeds after a migration failure. Error messages omit connection credentials. If the Docker daemon is unavailable or inaccessible, restore daemon access before retrying; avoid changing another project's containers or port forwards.
+
+## Database integration tests
+
+```sh
+pnpm test:integration
+```
+
+This command creates a unique `chronostasis-test-<id>` Compose project, builds the development image, waits for its separate `db-test` service, and runs Vitest against `chronostasis_test`. It removes only that invocation's test containers/network/volumes on success or failure. It never resets or attaches the normal development volume. To run unit tests without installing host Node/pnpm:
+
+```sh
+docker compose run --rm --build db-init pnpm test:unit
+```
+
+That example runs unit tests in the application image; integration tests use the dedicated host runner above so their project and cleanup stay isolated. For a manual integration session, use a separately named Compose project with the `test` profile and clean up that project's volumes afterward; do not enable its profile under the normal development project and call that isolated.
+
+The integration suite requires an explicit `TEST_DATABASE_URL`, a local/loopback host or `db-test`, and the exact database name `chronostasis_test`. It refuses the normal `db` hostname, remote hosts, other database names, and a destination equal to `DATABASE_URL`/`MIGRATION_DATABASE_URL`. The Compose test service supplies its isolated URL automatically. Tests apply migrations idempotently and remove only the unique users they created; no truncate, schema reset, or database drop is performed.
 
 ## Styling
 
@@ -77,13 +151,15 @@ The hook does not enforce Conventional Commit syntax or subject length. Follow `
 ```sh
 pnpm lint
 pnpm typecheck
+pnpm test:unit
+pnpm test:integration
 pnpm test:hooks
 pnpm build
 ```
 
-Linting uses type-aware strict TypeScript rules, React Hooks rules, browser/server import boundaries, and zero allowed warnings. Type checking uses strict mode, explicit browser types, and additional indexed-access/optional-property checks. The build produces static assets in `apps/web/dist`.
+Linting uses type-aware strict TypeScript rules, React Hooks rules, browser/server import boundaries, and zero allowed warnings. Type checking uses strict mode, explicit browser types, and additional indexed-access/optional-property checks. The build produces static assets in `apps/web/dist`. Workspace libraries emit declarations into their ignored `dist` folders for TypeScript project references. Database source remains strictly checked, but that package alone uses `skipLibCheck` for stable Drizzle’s broken optional-driver declaration files; browser/contracts/tooling continue checking declaration files.
 
-`pnpm test:unit` runs Vitest. At this scaffold stage there are no application unit tests, so it intentionally exits nonzero with “No test files found.” It does not silently report success. Behavioral tests are added with the API/database/frontend logic in subsequent tasks. Playwright and database integration commands do not exist yet.
+`pnpm test:unit` runs contract and database-configuration tests without Docker. `pnpm test:integration` covers real persistence, concurrent upserts, user isolation, migrations, and seeds with Docker. Empty test suites fail instead of silently passing. Playwright is added in its later task.
 
 The hook suite can also run without installing dependencies:
 
@@ -102,4 +178,4 @@ node --check scripts/install-hooks.mjs
 node --check scripts/test-hooks.mjs
 ```
 
-Database integration and Playwright smoke-test commands will be documented as those tools are established. `ARCHITECTURE.md` will describe the verified application architecture after implementation.
+Playwright smoke-test commands will be documented when that tooling is established. `ARCHITECTURE.md` distinguishes the current implementation from planned features and will be finalized after implementation verification.

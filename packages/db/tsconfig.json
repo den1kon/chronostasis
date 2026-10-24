@@ -1,0 +1,28 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "lib": [
+      "ES2023"
+    ],
+    "types": [
+      "node"
+    ],
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "skipLibCheck": true
+  },
+  "include": [
+    "src",
+    "tests",
+    "drizzle.config.ts"
+  ],
+  "references": [
+    {
+      "path": "../contracts"
+    }
+  ]
+}

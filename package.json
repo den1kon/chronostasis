@@ -15,7 +15,11 @@
     "test:unit": "vitest run",
     "test:hooks": "node scripts/test-hooks.mjs",
     "hooks:install": "node scripts/install-hooks.mjs",
-    "build": "pnpm --filter @chronostasis/web build"
+    "build": "pnpm --filter @chronostasis/web build",
+    "db:generate": "pnpm --filter @chronostasis/db db:generate",
+    "db:migrate": "pnpm --filter @chronostasis/db db:migrate",
+    "db:seed": "pnpm --filter @chronostasis/db db:seed",
+    "test:integration": "node scripts/test-integration.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
