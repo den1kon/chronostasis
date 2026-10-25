@@ -14,7 +14,7 @@ try {
     console.error('API listener failed.');
     void api.close().then(() => { process.exitCode = 1; }, () => { process.exitCode = 1; });
   });
-  server.listen(api.port, '0.0.0.0', () => { console.info(`API listening on port ${String(api.port)}.`); });
+  server.listen(api.port, api.host, () => { console.info(`API listening on ${api.host}:${String(api.port)}.`); });
   let stopping = false;
   const stop = () => {
     if (stopping) return;

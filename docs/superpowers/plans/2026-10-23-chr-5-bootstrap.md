@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md` (read it before executing).
 
-Status: approved for implementation by the user on 2026-10-23. Tasks 1–6 have been reviewed and committed: `d645c1c`, `cd62a97`, `7dc32f0`, `6cfd5f3`, `f9de4ac`, and `002535d`. Task 7 is the documentation-only task in progress; CHR-5 remains pending final reviews and explicit completion approval.
+Status: approved for implementation by the user on 2026-10-23. Tasks 1–7 are committed through `1ede096`. Final Bugbot-style review found no actionable bugs. Security Review found a host-listener exposure; corrective Task 8 is in progress. CHR-5 remains pending corrective verification/review and explicit completion approval.
 
 ## Global Constraints
 
@@ -291,12 +291,12 @@ The Playwright service uses a separate Compose project and project-scoped Postgr
 - [x] Review ticket documentation, record Task 6’s commit, and retain deferred product/deployment scope and Clerk credential requirements.
 - [x] Run `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`, plus Compose config, startup/persistence, and isolated initializer-failure checks. Record exact outcomes. No development database reset was used.
 
-- [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `document architecture`. Verify the resulting subject is exactly `[CHR-5] document architecture` and has no message body. If review is pending, leave the task uncommitted.
+- [x] **Review and commit gate:** Task 7 was reviewed and committed as `1ede096` (`[CHR-5] document architecture`) with no message body.
 
 ## Final ticket acceptance (not an additional commit task)
 
-- [ ] Ask the user for permission to run Bugbot and Security Review. Once authorized, run both; resolve findings or obtain explicit user ignores. Rerun affected checks and review fixes within the granted permission.
-- [ ] If review requires code changes, update the plan with a new one-commit corrective task and its prepared subject before implementing it, or amend the owning current-agent commit only within the AGENTS.md provenance and unstaged-review rules. Do not silently squash unrelated tasks or rewrite user/pushed commits.
+- [x] The user authorized full-history Bugbot and Security Review. Bugbot-style review found no actionable bugs; a dedicated Bugbot runner was unavailable, so the review was performed manually. Security Review found one low-severity API bind exposure, addressed in Task 8; follow-up review is pending.
+- [x] Security review required a correction; Task 8 and its prepared one-commit subject were added before implementation. No existing commit was rewritten.
 - [ ] Verify the actual commit sequence matches the task boundaries and that every subject has exactly one `[CHR-5]` prefix. No staging or commit is authorized simply because the plan names a subject.
 - [ ] Confirm all required checks pass and all findings are resolved or explicitly ignored. Request explicit user approval of ticket completion. Do not create or open a PR unless explicitly requested.
 
@@ -309,10 +309,34 @@ The Playwright service uses a separate Compose project and project-scoped Postgr
 - Complete Docker Compose and mobile frontend connectivity: Task 5; startup ordering, hot reload, dependency refresh, persistence, initialization failure, and authenticated POST/GET flow.
 - Playwright smoke coverage: Task 6; real Clerk sign-in and no silently skipped acceptance.
 - Current architecture and finalized rules: Task 7; `ARCHITECTURE.md` reflects the verified implementation and labels Vercel/Neon, PWA/native packaging, and product behavior as future work.
-- Each of the seven tasks contains one prepared commit subject, scoped file ownership, verification steps, and its own permission-gated commit checkpoint. Directly related documentation is included in each task; final acceptance is not an extra empty commit.
+- Each implementation task contains one prepared commit subject, scoped file ownership, verification steps, and its own permission-gated commit checkpoint. Directly related documentation is included in each task; final acceptance is not an extra empty commit.
 - Deployment, PWA/native packaging, and product functionality remain deferred.
 
-Recommended execution: native execution in this session after user review. The design builder check is a planning check, not the final Bugbot/Security Review gate. No implementation-review permission is assumed from this plan.
+## Task 8: Bind optional host API development to loopback
+
+**Planned commit:** `[CHR-5] bind api locally`
+
+**Input to Git (hook adds prefix):** `bind api locally`
+
+**Commit boundary:** listener configuration, regression tests, Compose settings, and directly related documentation only.
+
+**Interfaces**
+
+- Consumes: shared API environment parsing and the existing Compose runtime.
+- Produces: host-run API development bound to `127.0.0.1` by default; Compose explicitly binds to `0.0.0.0` on its private service network.
+
+**Files:** `packages/api/src/env.ts`, `packages/api/src/env.test.ts`, `packages/api/src/production.ts`, `apps/api/src/index.ts`, `compose.yaml`, `.env.example`, `README.md`, `ARCHITECTURE.md`, the design spec, and this plan.
+
+- [x] Add environment tests for the loopback default and explicit Compose bind override; observe the focused test fail before implementation.
+- [x] Parse `API_HOST` with a safe `127.0.0.1` default and use the resulting host in the Node listener. Set Compose's internal API host to `0.0.0.0`; document the distinction.
+- [x] Run the focused API environment test, then the full required verification suite in the pinned Docker image; record any unavailable checks.
+- [ ] **Review and commit gate:** present the complete unstaged diff and wait for explicit review confirmation before staging or committing. Do not use the prepared subject as authorization.
+
+**Task 8 verification evidence:** the new API environment tests failed before implementation and pass afterward (18/18). In the Node 24.20.0 / pnpm 10.34.7 Docker container, `pnpm lint`, `pnpm typecheck`, `pnpm test:unit` (104/104), and `pnpm build` passed. `node scripts/test-integration.mjs` passed 13/13; `node scripts/test-hooks.mjs` passed 37/37; `node scripts/run-e2e.mjs` passed all four authenticated/setup/signed-out checks; `docker compose config --quiet` passed. The isolated integration and E2E projects cleaned their own containers, networks, and volumes; the development database was not reset. The dedicated Bugbot tool is unavailable; manual full-history and follow-up Bugbot-style reviews reported no actionable bugs. Security Review's host binding finding is fixed; follow-up Security Review found no remaining exposure by default.
+
+**Review results:** full-history Bugbot-style review found no actionable bugs. Security Review found a low-severity finding at `apps/api/src/index.ts:17`: host-run API development bound to all interfaces. Task 8 changes the safe default to loopback and explicitly configures Compose's private listener. Follow-up Bugbot-style and Security Review passes found no remaining issues. No files were staged or committed; the Task 8 unstaged review gate remains open.
+
+The user authorized implementation, full-history Bugbot-style review, and Security Review in this session. The design builder check is a planning check, not the final implementation review gate.
 
 ## Task 3 chest extension verification
 

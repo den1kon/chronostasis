@@ -4,7 +4,7 @@ A mobile-first focus application where completed sessions will unlock chests con
 
 ## Bootstrap status
 
-CHR-5 is in progress on `maintenance/CHR-5`. Tasks 1–6 are committed; the isolated Playwright smoke-test setup is `002535d`. The timer, reward selection, and owned inventory are future features. Deployment is separate. Task 7 is finalizing architecture and operating documentation.
+CHR-5 implementation Tasks 1–7 are committed through `1ede096`. Final review prompted a loopback bind default for optional host-run API development; its corrective change is awaiting unstaged-diff review. The timer, reward selection, and owned inventory are future features. Deployment is separate.
 
 - [Design specification](docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md)
 - [Implementation plan](docs/superpowers/plans/2026-10-23-chr-5-bootstrap.md)
@@ -161,7 +161,7 @@ docker compose exec api node -e "fetch('http://localhost:3001/api/me').then(asyn
 
 Expect 200 and 401 respectively. Do not print `docker compose config` or container environment dumps when real keys are configured; `docker compose config --quiet` validates without displaying values.
 
-For optional host API development, `pnpm dev:api` loads the root `.env` and listens on `API_PORT` (default 3001). You must supply a deliberately host-reachable `DATABASE_URL`; the Compose-only `db` hostname is not a host connection. Prefer Docker for the current setup. The frontend obtains a session token for POST initialization and another for the subsequent GET. “Account ready” appears only after the read returns the same persisted user. Failed sync shows a safe retry action; a 401 offers sign-in again. Requests are cancelled on unmount and the sync gate resets when the user/session changes.
+For optional host API development, `pnpm dev:api` loads the root `.env` and listens on `API_HOST` (default `127.0.0.1`) and `API_PORT` (default 3001). Compose explicitly binds to `0.0.0.0` inside its private network so the frontend container can reach it; its port is not published to the host. You must supply a deliberately host-reachable `DATABASE_URL`; the Compose-only `db` hostname is not a host connection. Prefer Docker for the current setup. The frontend obtains a session token for POST initialization and another for the subsequent GET. “Account ready” appears only after the read returns the same persisted user. Failed sync shows a safe retry action; a 401 offers sign-in again. Requests are cancelled on unmount and the sync gate resets when the user/session changes.
 
 `apps/web/api/health.ts` and `me.ts` are thin future Vercel Function entrypoints backed by the same handlers. Runtime composition is in `apps/web/server/api.ts`, outside the public function directory. The SPA fallback excludes `/api` and all of its descendants, so missing API routes are never rewritten to HTML. Hosted invocation/deployment remains unverified and belongs to the deployment ticket.
 

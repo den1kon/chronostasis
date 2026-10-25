@@ -2,6 +2,7 @@ export interface ApiEnv {
   clerkSecretKey: string;
   clerkIssuer: string;
   authorizedParties: string[];
+  host: string;
   port: number;
 }
 type Environment = Readonly<Record<string, string | undefined>>;
@@ -25,7 +26,9 @@ export function readApiEnv(env: Environment): ApiEnv {
   const clerkIssuer = origin(required(env, 'CLERK_ISSUER'), 'CLERK_ISSUER', true);
   const authorizedParties = [...new Set(required(env, 'CLERK_AUTHORIZED_PARTIES').split(',')
     .map((value) => origin(value.trim(), 'CLERK_AUTHORIZED_PARTIES')))];
+  const host = env['API_HOST']?.trim() ?? '127.0.0.1';
+  if (!host) throw new Error('API_HOST must not be empty.');
   const port = Number(env['API_PORT'] ?? '3001');
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('API_PORT must be an integer from 1 to 65535.');
-  return { clerkSecretKey, clerkIssuer, authorizedParties, port };
+  return { clerkSecretKey, clerkIssuer, authorizedParties, host, port };
 }

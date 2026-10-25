@@ -13,5 +13,5 @@ export function createProductionApi(env: Readonly<Record<string, string | undefi
     findUser: (subject) => repository.findUser(subject),
     probe: () => database.probe(),
   });
-  return { handler, close: () => database.close(), port: settings.port };
+  return { handler, close: () => database.close(), host: settings.host, port: settings.port };
 }

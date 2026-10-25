@@ -22,7 +22,7 @@ Workspace libraries emit declarations for TypeScript project references. Type-aw
 
 ## Local runtime and request flow
 
-`docker compose up --build -d --wait` starts the dependency initializer, PostgreSQL, database migration/seed initializer, local API, and Vite frontend in dependency order. Only the frontend is published to the host, bound to loopback; the API and database remain on the Compose network. Postgres uses a named volume. Source mounts support frontend/API hot reload, while a container-owned dependency volume and image-owned workspace symlinks keep host dependencies and `.env` out of application containers.
+`docker compose up --build -d --wait` starts the dependency initializer, PostgreSQL, database migration/seed initializer, local API, and Vite frontend in dependency order. Only the frontend is published to the host, bound to loopback; the API binds to `0.0.0.0` inside the private Compose network and its port is not published. Optional host-run API development defaults to `127.0.0.1` (`API_HOST`); the Compose service explicitly overrides it. Postgres uses a named volume. Source mounts support frontend/API hot reload, while a container-owned dependency volume and image-owned workspace symlinks keep host dependencies and `.env` out of application containers.
 
 The browser flow is:
 

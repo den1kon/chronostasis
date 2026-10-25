@@ -1,6 +1,6 @@
 # CHR-5: Bootstrap design
 
-Status: approved for implementation on 2026-10-23. Tasks 1–6 are committed (`d645c1c`, `cd62a97`, `7dc32f0`, `6cfd5f3`, `f9de4ac`, `002535d`). Task 3 includes normalized user/item/chest persistence; Task 6 includes isolated signed-out and authenticated Playwright projects. Task 7 finalizes operating documentation and `ARCHITECTURE.md`. CHR-5 remains in progress pending Task 7 review/commit, final review permission, and explicit ticket-completion approval.
+Status: approved for implementation on 2026-10-23. Tasks 1–7 are committed through `1ede096`; Task 3 includes normalized user/item/chest persistence, and Task 6 includes isolated signed-out and authenticated Playwright projects. Task 7 finalized operating documentation and `ARCHITECTURE.md`. A full-history Bugbot-style review found no actionable bugs. Security Review identified a host API listener exposure; Task 8 changes host-run development to default to loopback while Compose explicitly binds inside its private network. CHR-5 awaits review of the corrective unstaged diff and explicit completion approval.
 
 ## Intent
 
@@ -75,6 +75,7 @@ Contracts/database projects emit declarations for cross-workspace TypeScript ref
 - `CLERK_SECRET_KEY`: backend-only development instance key.
 - `CLERK_ISSUER`: HTTPS Frontend API origin for the same development instance. The selected backend SDK flow retrieves JWKS using `CLERK_SECRET_KEY`; no separate `CLERK_JWT_KEY` is required.
 - `API_PORT`: local API listener, default 3001; Compose fixes its internal port to 3001.
+- `API_HOST`: optional host-run API bind address, default `127.0.0.1`; Compose sets `0.0.0.0` inside its private network without publishing the API port.
 - `DATABASE_URL`, `MIGRATION_DATABASE_URL`: backend-only connection URLs. Compose provides an internal default for local Postgres; document host-run overrides separately.
 - `CLERK_AUTHORIZED_PARTIES`: explicit allowed frontend origins, including `http://localhost:5173` locally.
 - `E2E_CLERK_USER_EMAIL`: dedicated development test account for the supported authenticated test helper. `E2E_CLERK_USER_PASSWORD` is optional for password-specific checks; the preferred helper uses the account email and development backend secret to create a genuine Clerk session, including when client trust/additional verification is enabled.

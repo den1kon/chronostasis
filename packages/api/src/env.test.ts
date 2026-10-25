@@ -12,8 +12,12 @@ describe('server configuration', () => {
       clerkSecretKey: valid.CLERK_SECRET_KEY,
       clerkIssuer: valid.CLERK_ISSUER,
       authorizedParties: ['http://localhost:5173', 'http://localhost:5174'],
+      host: '127.0.0.1',
       port: 3001,
     });
+  });
+  it('allows Compose to opt into its internal network interface', () => {
+    expect(readApiEnv({ ...valid, API_HOST: '0.0.0.0' }).host).toBe('0.0.0.0');
   });
   it.each(['CLERK_SECRET_KEY', 'CLERK_ISSUER', 'CLERK_AUTHORIZED_PARTIES'])('names missing %s without disclosing other settings', (name) => {
     const env = { ...valid, [name]: '' };
