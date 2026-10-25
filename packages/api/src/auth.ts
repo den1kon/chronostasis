@@ -1,5 +1,5 @@
 import {verifyToken} from '@clerk/backend';
-import type {ApiEnv} from './env';
+import type {ApiEnv} from './env.js';
 
 export function createAuthenticator(
   settings: Pick<

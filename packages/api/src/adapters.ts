@@ -1,6 +1,6 @@
 import type {IncomingMessage, ServerResponse} from 'node:http';
 import type {VercelRequest, VercelResponse} from '@vercel/node';
-import {apiError} from './handler';
+import {apiError} from './handler.js';
 
 export type VercelHandler = (
   request: VercelRequest,

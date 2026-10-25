@@ -1,7 +1,7 @@
 import type {PublicUser} from '@chronostasis/contracts';
 import {eq, sql} from 'drizzle-orm';
-import type {Database} from './client';
-import {users} from './schema';
+import type {Database} from './client.js';
+import {users} from './schema.js';
 
 function requireIdentity(clerkUserId: string): void {
   if (!clerkUserId.trim()) throw new Error('Clerk user ID is required.');

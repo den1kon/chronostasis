@@ -2,8 +2,8 @@ import {drizzle} from 'drizzle-orm/node-postgres';
 import {sql} from 'drizzle-orm';
 import pg from 'pg';
 import type {PoolConfig} from 'pg';
-import {readDatabaseEnv} from './env';
-import * as schema from './schema';
+import {readDatabaseEnv} from './env.js';
+import * as schema from './schema.js';
 
 export function databasePoolOptions(connectionString: string): PoolConfig {
   const url = new URL(

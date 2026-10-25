@@ -13,7 +13,7 @@
     "lint": "eslint . --max-warnings=0",
     "format:check": "gts lint '**/*.{js,mjs,jsx,ts,tsx}'",
     "format:fix": "gts fix '**/*.{js,mjs,jsx,ts,tsx}'",
-    "typecheck": "tsc --build",
+    "typecheck": "tsc --build && corepack pnpm --filter @chronostasis/web typecheck",
     "test:unit": "vitest run",
     "test:hooks": "node scripts/test-hooks.mjs",
     "test:e2e": "node scripts/run-e2e.mjs",

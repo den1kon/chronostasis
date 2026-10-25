@@ -3,9 +3,9 @@ import {
   createUserRepository,
   readDatabaseEnv,
 } from '@chronostasis/db';
-import {createAuthenticator} from './auth';
-import {readApiEnv} from './env';
-import {createApiHandler} from './handler';
+import {createAuthenticator} from './auth.js';
+import {readApiEnv} from './env.js';
+import {createApiHandler} from './handler.js';
 
 export function createProductionApi(
   env: Readonly<Record<string, string | undefined>>,

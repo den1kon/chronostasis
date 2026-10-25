@@ -37,7 +37,7 @@ flowchart LR
 
 The frontend obtains Clerk bearer tokens and calls `POST /api/me` to idempotently create the current application user, then `GET /api/me` to confirm the persisted identity. “Account ready” requires both responses to refer to the same user. Requests are scoped to the active user/session and cancelled when the relevant component unmounts.
 
-The local Node adapter and Vercel Functions entrypoints convert requests to the same Web `Request`/`Response` handlers. Both preserve request method, headers, and raw body bytes, enforce a 64 KiB body limit, and return the same safe JSON error contract. The Vercel adapters are implemented but hosted invocation has not been verified.
+The local Node adapter and Vercel Functions entrypoints convert requests to the same Web `Request`/`Response` handlers. Both preserve request method, headers, and raw body bytes, enforce a 64 KiB body limit, and return the same safe JSON error contract. Vercel runs a dedicated typecheck for its function entrypoints before the Vite build. Its app-level `tsconfig.json` repeats the shared compiler options because Vercel does not follow TypeScript project references. Hosted invocation has not been verified.
 
 ## Authentication and API
 

@@ -65,6 +65,8 @@ Commit a migration with the schema change. Compose applies pending migrations an
 
 For Vercel, configure the Neon integration with the `NEON_` prefix and enable preview database branches. It supplies `NEON_POSTGRES_URL` (pooled runtime connection) and `NEON_POSTGRES_URL_NON_POOLING` (direct migration connection). The database environment helper prefers explicit `DATABASE_URL` / `MIGRATION_DATABASE_URL` values and falls back to those Neon variables. It also accepts `NEON_DATABASE_URL` / `NEON_DATABASE_URL_UNPOOLED` for compatibility, so Compose and hosted functions use their respective databases.
 
+Vercel runs `pnpm typecheck` in `apps/web` before building the Vite frontend. This checks the serverless function entrypoints with Node's ESM resolution rules; the web app TypeScript config repeats shared compiler settings because Vercel does not follow TypeScript project references. The root `pnpm typecheck` includes this function check as well.
+
 After linking the checkout to the Vercel project, apply migrations and seed the production catalogue through the Production environment:
 
 ```sh
