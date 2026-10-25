@@ -2,7 +2,7 @@ import {
   createDatabase,
   createUserRepository,
   readDatabaseEnv,
-} from '@chronostasis/db';
+} from '../../db/src/index.js';
 import {createAuthenticator} from './auth.js';
 import {readApiEnv} from './env.js';
 import {createApiHandler} from './handler.js';

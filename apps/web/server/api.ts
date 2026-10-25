@@ -2,7 +2,7 @@ import {
   createProductionApi,
   toVercelHandler,
   type VercelHandler,
-} from '@chronostasis/api';
+} from '../../../packages/api/src/index.js';
 
 let api: ReturnType<typeof createProductionApi> | undefined;
 const handler: VercelHandler = toVercelHandler(async request => {

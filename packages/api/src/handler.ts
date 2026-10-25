@@ -1,4 +1,7 @@
-import {UserResponseSchema, type PublicUser} from '@chronostasis/contracts';
+import {
+  UserResponseSchema,
+  type PublicUser,
+} from '../../contracts/src/index.js';
 
 export interface ApiDependencies {
   authenticate(request: Request): Promise<{clerkUserId: string} | null>;
