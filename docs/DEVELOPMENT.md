@@ -4,7 +4,7 @@ This guide covers the local workflow for Chronostasis. For service boundaries an
 
 ## Prerequisites and setup
 
-- Node.js 24.20.0 and pnpm 10.34.7 (the repository pins both).
+- Node.js 24.20.0 and pnpm 10.34.7 locally (`.node-version` pins Node; `package.json` accepts Node.js >=24.20.0 and <25 to allow compatible 24.x patch updates on managed hosts such as Vercel).
 - Docker with Compose for PostgreSQL integration tests and browser E2E tests.
 - Python 3.9 or newer for the pinned pre-commit 3.8.0 runner.
 - A Clerk development application. Authenticated browser tests also need the dedicated test user described below.

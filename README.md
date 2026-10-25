@@ -58,7 +58,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for runtime/data boundaries and the [desi
 
 ## Before opening a PR to `main`
 
-Use Node.js **24.20.0** and pnpm **10.34.7**. Install from the lockfile, then run the PR gate:
+Use Node.js **24.20.0** and pnpm **10.34.7** locally. The `.node-version` file pins the local runtime; `package.json` accepts Node.js 24.20.0 and newer patch releases in the 24.x line so Vercel's managed Node runtime can update patches. Install from the lockfile, then run the PR gate:
 
 ```sh
 pnpm install --frozen-lockfile
