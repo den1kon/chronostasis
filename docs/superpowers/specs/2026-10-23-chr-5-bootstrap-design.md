@@ -1,6 +1,6 @@
 # CHR-5: Bootstrap design
 
-Status: approved for implementation on 2026-10-23. Tasks 1 and 2 are committed (`d645c1c`, `cd62a97`); Task 3 user/item persistence and Compose foundation were verified; the chest catalogue requested on 2026-10-24 is now implemented and covered by 13 Postgres integration tests. Task 3 passed the authorized independent bug review after fixing its single finding; Security Review was skipped for this step as requested. Task 3 is committed as `7dc32f0`. Task 4 is implemented and locally verified, pending unstaged review; frontend sign-in and Playwright remain planned. The application bootstrap remains in progress.
+Status: approved for implementation on 2026-10-23. Tasks 1 and 2 are committed (`d645c1c`, `cd62a97`); Task 3 user/item persistence and Compose foundation were verified; the chest catalogue requested on 2026-10-24 is now implemented and covered by 13 Postgres integration tests. Task 3 passed the authorized independent bug review after fixing its single finding; Security Review was skipped for this step as requested. Task 3 is committed as `7dc32f0`. Task 4 is committed as `6cfd5f3`. Task 5 implements the authenticated mobile frontend and full Compose runtime, pending unstaged review; the committed Playwright suite remains Task 6. The application bootstrap remains in progress.
 
 ## Intent
 
@@ -77,7 +77,7 @@ Contracts/database projects emit declarations for cross-workspace TypeScript ref
 - `API_PORT`: local API listener, default 3001; Compose fixes its internal port to 3001.
 - `DATABASE_URL`, `MIGRATION_DATABASE_URL`: backend-only connection URLs. Compose provides an internal default for local Postgres; document host-run overrides separately.
 - `CLERK_AUTHORIZED_PARTIES`: explicit allowed frontend origins, including `http://localhost:5173` locally.
-- `E2E_CLERK_USER_EMAIL`, `E2E_CLERK_USER_PASSWORD`: dedicated development test account, used only by the authenticated smoke-test setup.
+- `E2E_CLERK_USER_EMAIL`: dedicated development test account for the supported authenticated test helper. `E2E_CLERK_USER_PASSWORD` is optional for password-specific checks; the preferred helper uses the account email and development backend secret to create a genuine Clerk session, including when client trust/additional verification is enabled.
 
 Environment validation must distinguish public and server settings and fail with variable names, without logging values. Do not put server variables in Vite's `define`, `VITE_*`, or browser imports. Avoid validating migration-independent Clerk settings when running database scripts.
 
@@ -119,7 +119,7 @@ Verify generated styles in the build and visually check both a narrow mobile vie
 
 ## Frontend bootstrap behavior
 
-Provide `/sign-in`, `/`, and `/inventory` with accessible mobile-first layout. Signed-out visitors see sign-in; signed-in visitors see a Focus placeholder and Inventory placeholder. Clearly label unimplemented product actions rather than providing working-looking timers or chests.
+Provide `/sign-in/*`, `/sign-up/*`, `/`, and `/inventory` with accessible mobile-first layout. Signed-out visitors see sign-in; signed-in visitors see a Focus placeholder and Inventory placeholder. Clearly label unimplemented product actions rather than providing working-looking timers or chests.
 
 After authentication, initialize the application user with POST `/api/me`, then GET `/api/me` and display a simple account-ready status. Show retryable errors and loading state. Initialization is idempotent so React development effect re-runs cannot create duplicate users. A direct load of `/inventory` must work locally; later Vercel configuration must preserve API paths before SPA fallback.
 
@@ -171,3 +171,14 @@ Shared-handler/auth/environment tests were observed failing against initial stub
 The user configured the development settings locally. Key/issuer consistency and a read-only Clerk JWKS request succeeded without displaying values. Isolated Compose probes returned 200/401/404/405/413; stopping its database produced safe 503. A real user's browser session and authenticated POST/GET persistence remain Tasks 5–6. Task 4 adds no development authentication bypass.
 
 The shared API package scopes `skipLibCheck` to third-party declarations because Clerk 3.26.2's shared types include missing optional frontend modules and exact-optional-property errors, and imported Drizzle declarations include optional-driver errors. All source still uses the strict shared settings; the local runtime and web tooling retain declaration checking.
+
+
+## Task 5 implementation and execution decisions
+
+The React client now uses `@clerk/react` 6.18.1, React Router 7.18.4 in declarative mode, a typed public-contract HTTP client, and a cancellation-aware account gate keyed by Clerk user/session. It requests tokens separately for POST and GET and displays “Account ready” only for a matching persisted user. Signed-out access redirects to sign-in; supported internal return destinations are whitelisted. A local sign-up route covers account creation/verification through Clerk’s prebuilt component. Focus/Inventory remain explicit placeholders.
+
+Compose adds a dependency initializer and frontend. The shared pnpm virtual store is container-owned; per-workspace symlinks come from the rebuilt image. Read-only source mounts enable hot reload without mounting host dependencies or `.env`. The frontend receives only its publishable key and internal proxy destination. Startup gates dependency sync, database readiness, migration success, API health, then frontend readiness. Manifest changes use `docker compose down` followed by `docker compose up --build -d --wait`, retaining database data.
+
+Client stubs produced ten expected failures, and the account-gate stub produced six; both became green. The suite now has 101 unit tests. Real browser verification used the configured dedicated development account and official Clerk email-based sign-in helper at 390 × 844, verifying persisted identity, reload, inventory navigation/direct load, sign-out, and no horizontal overflow. Password-only sign-in was observed stopping at `needs_client_trust`; no instance security setting was weakened. This is genuine Clerk authentication for integration verification, not a shipped authentication bypass, and does not claim an automated interactive email-code flow.
+
+The browser application scopes `skipLibCheck` for the same published Clerk declaration failures observed in Task 4, including React 19 JSX namespace declarations. Source strictness remains enabled; public contracts and tooling still check declarations. Signed-in browser behavior and error/cancellation unit tests exercise the new runtime paths. The full repeatable Playwright acceptance suite remains the next task.

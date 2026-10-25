@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md` (read it before executing).
 
-Status: approved for implementation by the user on 2026-10-23. Task 1 was reviewed and committed as `d645c1c`. Task 2 was reviewed and committed as `cd62a97`. Task 3 includes the verified user/item foundation and implemented chest catalogue. The user authorized bug review only (Security Review skipped for this step), followed by commit if clear and continuation to Task 4. Task 3 is committed as `7dc32f0`. Task 4 is implemented and locally verified, pending unstaged review; Tasks 5–7 have not started.
+Status: approved for implementation by the user on 2026-10-23. Task 1 was reviewed and committed as `d645c1c`. Task 2 was reviewed and committed as `cd62a97`. Task 3 includes the verified user/item foundation and implemented chest catalogue. The user authorized bug review only (Security Review skipped for this step), followed by commit if clear and continuation to Task 4. Task 3 is committed as `7dc32f0`. Task 4 is committed as `6cfd5f3`. Task 5 is implemented and verified, pending unstaged review; Tasks 6–7 have not started.
 
 ## Global Constraints
 
@@ -199,18 +199,21 @@ expect(deps.ensureUser).not.toHaveBeenCalled();
 
 - [x] Update README with API startup, required Clerk development settings, supported endpoints, and future Vercel adapter boundaries.
 
-- [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `add authenticated api`. Verify the resulting subject is exactly `[CHR-5] add authenticated api` and has no message body. If review is pending, leave the task uncommitted.
+- [x] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `add authenticated api`. Verify the resulting subject is exactly `[CHR-5] add authenticated api` and has no message body. If review is pending, leave the task uncommitted.
 
 
 **Verification evidence:** 84 unit tests pass; initial shared-handler/auth/env stubs produced 33 failing cases and adapter stubs produced seven failing parity cases. Real SDK cryptographic checks use an isolated JWKS boundary. Container startup waited for migrations/seeds; internal probes returned 200/401/404/405/413 and a safe 503 while the scratch database was stopped. Configured Clerk key/issuer consistency and a read-only JWKS request passed with no values displayed. Lint/type checks and the static build pass. The expanded image passed all 13 Postgres integration tests. Hosted Vercel invocation and real browser authentication remain unverified.
 
 **Execution decisions:** backend verification retrieves JWKS using the secret key, so no separate JWT PEM variable is needed. `skipLibCheck` is scoped to the shared API as well as DB because the installed Clerk/Drizzle third-party declarations fail strict declaration checking; source strictness and runtime tests remain. The latest session-provided Git rules take precedence over the earlier Conventional Commit/length policy for the prepared Task 4 subject. No staging/commit permission is assumed for this task.
 
+
+**Commit:** user approved staging/commit and explicitly requested no Bugbot. Committed as `6cfd5f3` with exactly one ticket prefix and no body.
+
 ## Task 5: Mobile-first shell and authenticated persistence flow
 
-**Planned commit:** `[CHR-5] feat: add mobile application shell`
+**Planned commit:** `[CHR-5] add mobile app shell`
 
-**Input to Git (hook adds prefix):** `feat: add mobile application shell`
+**Input to Git (hook adds prefix):** `add mobile app shell`
 
 **Commit boundary:** this task’s listed files, tests, dependency/lockfile changes, and directly related documentation only.
 
@@ -221,17 +224,22 @@ expect(deps.ensureUser).not.toHaveBeenCalled();
 
 **Files:** frontend files and frontend API unit tests in the file map; Compose frontend service, Dockerfile development stages/mounts as needed, `.env.example` public settings, lockfile updates, and README full local-startup section.
 
-- [ ] Write API-client tests: sends bearer headers, parses valid response, rejects invalid response schema, exposes a safe retryable network failure, and handles 401 without displaying account-ready status.
-- [ ] Run those tests to confirm failure. Implement typed fetch helpers using contracts; database packages never enter the client dependency graph.
-- [ ] Add the Compose frontend service on host port 5173 with `/api` proxy to the internal API. Gate API/frontend startup on successful database initialization, configure source hot reload and container-owned dependency volumes, and keep backend secrets out of the frontend environment.
-- [ ] Add Clerk provider/sign-in and protected routes. After login POST `/api/me`, then GET `/api/me`, and display account-ready status only after the read succeeds. Prevent stale responses from updating state after sign-out/unmount; allow safe retry.
-- [ ] Use the existing Tailwind utilities and shared theme tokens to add accessible navigation, loading/error states, and clearly labeled Focus/Inventory placeholders. No functional timer/chest is implied. Verify narrow viewport layout and keyboard navigation.
-- [ ] Run `pnpm test:unit`, `pnpm typecheck`, and `pnpm build`. Inspect the frontend bundle for server imports and secret-bearing configuration. Source placeholders in `.env.example` are not proof of actual secret leakage; do not print real keys during checks.
+- [x] Write API-client tests: sends bearer headers, parses valid response, rejects invalid response schema, exposes a safe retryable network failure, and handles 401 without displaying account-ready status.
+- [x] Run those tests to confirm failure. Implement typed fetch helpers using contracts; database packages never enter the client dependency graph.
+- [x] Add the Compose frontend service on host port 5173 with `/api` proxy to the internal API. Gate API/frontend startup on successful database initialization, configure source hot reload and container-owned dependency volumes, and keep backend secrets out of the frontend environment.
+- [x] Add Clerk provider/sign-in and protected routes. After login POST `/api/me`, then GET `/api/me`, and display account-ready status only after the read succeeds. Prevent stale responses from updating state after sign-out/unmount; allow safe retry.
+- [x] Use the existing Tailwind utilities and shared theme tokens to add accessible navigation, loading/error states, and clearly labeled Focus/Inventory placeholders. No functional timer/chest is implied. Verify narrow viewport layout and keyboard navigation.
+- [x] Run `pnpm test:unit`, `pnpm typecheck`, and `pnpm build`. Inspect the frontend bundle for server imports and secret-bearing configuration. Source placeholders in `.env.example` are not proof of actual secret leakage; do not print real keys during checks.
 
-- [ ] Document and verify an exact dependency refresh command for the chosen volume layout, preserving the database volume. Never require deleting developer data to update dependencies.
-- [ ] Run `docker compose config --quiet` and `docker compose up --build -d --wait`; verify UI hot reload and restore the edit, then recreate containers and confirm data remains. Test a failed initializer in an isolated Compose project: API/frontend must not start ready. Rebuild after a manifest change in a scratch copy to verify dependency refresh. Update README with the now-working one-command startup and troubleshooting.
+- [x] Document and verify an exact dependency refresh command for the chosen volume layout, preserving the database volume. Never require deleting developer data to update dependencies.
+- [x] Run `docker compose config --quiet` and `docker compose up --build -d --wait`; verify UI hot reload and restore the edit, then recreate containers and confirm data remains. Test a failed initializer in an isolated Compose project: API/frontend must not start ready. Rebuild after a manifest change in a scratch copy to verify dependency refresh. Update README with the now-working one-command startup and troubleshooting.
 
-- [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `feat: add mobile application shell`. Verify the resulting subject is exactly `[CHR-5] feat: add mobile application shell` and has no message body. If review is pending, leave the task uncommitted.
+- [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `add mobile app shell`. Verify the resulting subject is exactly `[CHR-5] add mobile app shell` and has no message body. If review is pending, leave the task uncommitted.
+
+
+**Verification evidence:** 101 unit tests and 13 real-Postgres integration tests pass. Client/gate stubs failed ten/six cases before implementation. The configured development account completed real Clerk email-based test sign-in; authenticated account sync/read, reload persistence, Inventory navigation/direct load, sign-out, and 390 × 844 overflow checks passed. Sign-in keyboard focus and source hot reload/restoration were verified. The normal full Compose startup succeeded on host port 5174 (5173 remains its default). A manifest/lock change in a scratch checkout installed a new dependency through the retained dependency volume while preserving the same database UUID/catalogue. Full recreation also retained the actual authenticated user UUID and catalogue; a separate failed initializer blocked API/frontend readiness. Configured backend/test secrets are absent from browser assets and the frontend container environment; `.env` is excluded from its image/mounts.
+
+**Execution decisions:** Clerk’s password helper reached `needs_client_trust`, so verification uses its documented/recommended email-based helper, which creates a real development session using the backend secret. No authentication setting was weakened, and no bypass was shipped. Task 6 should use this supported helper and require the dedicated account email, with password optional for password-specific tests. Browser app `skipLibCheck` is scoped for published Clerk declaration errors; source remains strict. Dependency volumes contain the shared pnpm virtual store, while immutable workspace symlinks live in the rebuilt image; source-only mounts prevent host dependency/secret contamination. Bugbot is not run per the user’s current instruction. Task 5 remains unstaged until explicit user review approval.
 
 ## Task 6: Smoke tests and real end-to-end verification
 
@@ -249,7 +257,7 @@ expect(deps.ensureUser).not.toHaveBeenCalled();
 **Files:** Playwright config, tests/e2e files, env preflight script; root `test:e2e` script, workspace/lockfile updates, isolated test Compose configuration, `.env.example` test settings, and README test setup section.
 
 - [ ] Add a preflight for authenticated smoke tests. Write a unit test asserting absent test-account/Clerk settings cause nonzero exit with required variable names and no secret values. Configure test projects so signed-out tests can run independently without representing full acceptance.
-- [ ] Add a project-based Clerk setup dependency using the installed `@clerk/testing` API. Obtain a real development session through the supported helper and dedicated account; bot-detection testing tokens do not authenticate the user by themselves.
+- [ ] Add a project-based Clerk setup dependency using the installed `@clerk/testing` API. Obtain a real development session through the supported email-based helper and dedicated account (the password helper cannot complete this instance’s client-trust verification); bot-detection testing tokens do not authenticate the user by themselves.
 - [ ] Write signed-out smoke tests for sign-in display, 401 API response, and direct frontend route load.
 - [ ] Write authenticated smoke tests: login → account ready → authenticated POST/GET return the same user → reload retains the same database ID → inventory placeholder loads. Use a mobile Chromium viewport of 390 × 844; assert document width does not exceed viewport width.
 - [ ] Run the new smoke tests before final UI corrections and verify any failures identify missing behavior, not missing scaffolding. Complete only the minimal implementation needed for the specified flow.

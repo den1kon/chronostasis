@@ -6,6 +6,8 @@ x-app: &app
     context: .
     dockerfile: Dockerfile.dev
   init: true
+  volumes:
+    - dependencies:/workspace/node_modules
 
 x-postgres: &postgres
   image: postgres:17-alpine@sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb
@@ -17,6 +19,12 @@ x-postgres: &postgres
     start_period: 5s
 
 services:
+  deps-init:
+    <<: *app
+    environment:
+      CI: "true"
+    command: ["pnpm", "install", "--frozen-lockfile"]
+
   db:
     <<: *postgres
     environment:
@@ -29,6 +37,8 @@ services:
   db-init:
     <<: *app
     depends_on:
+      deps-init:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
     environment:
@@ -48,9 +58,39 @@ services:
       CLERK_ISSUER: ${CLERK_ISSUER:-}
       CLERK_AUTHORIZED_PARTIES: ${CLERK_AUTHORIZED_PARTIES:-http://localhost:5173,http://localhost:5174}
       API_PORT: "3001"
-    command: ["pnpm", "--filter", "@chronostasis/api-server", "start"]
+    command: ["pnpm", "--filter", "@chronostasis/api-server", "dev"]
+    volumes:
+      - dependencies:/workspace/node_modules
+      - ./apps/api/src:/workspace/apps/api/src:ro
+      - ./packages/api/src:/workspace/packages/api/src:ro
+      - ./packages/db/src:/workspace/packages/db/src:ro
+      - ./packages/contracts/src:/workspace/packages/contracts/src:ro
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 6s
+      retries: 15
+      start_period: 5s
+
+  web:
+    <<: *app
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:-}
+      API_PROXY_TARGET: http://api:3001
+    ports:
+      - "127.0.0.1:${WEB_PORT:-5173}:5173"
+    volumes:
+      - dependencies:/workspace/node_modules
+      - ./apps/web/src:/workspace/apps/web/src:ro
+      - ./apps/web/index.html:/workspace/apps/web/index.html:ro
+      - ./apps/web/vite.config.ts:/workspace/apps/web/vite.config.ts:ro
+      - ./packages/contracts/src:/workspace/packages/contracts/src:ro
+    command: ["pnpm", "dev"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5173').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 3s
       timeout: 6s
       retries: 15
@@ -77,5 +117,6 @@ services:
     command: ["pnpm", "exec", "vitest", "run", "--config", "vitest.integration.config.ts"]
 
 volumes:
+  dependencies:
   postgres_data:
   postgres_test_data:

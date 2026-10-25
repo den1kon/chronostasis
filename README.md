@@ -4,7 +4,7 @@ A mobile-first focus application where completed sessions will unlock chests con
 
 ## Bootstrap status
 
-CHR-5 is in progress on `maintenance/CHR-5`. The ticket workflow and commit hook are committed. The TypeScript workspace and React/Vite/Tailwind shell are committed (`cd62a97`). Task 3 has a verified local Postgres/user/item foundation. Its normalized chest catalogue is implemented with an additive migration, transactional seeds, and relational-constraint tests. Task 3 passed the authorized independent bug review after fixing its single finding; Security Review was skipped for this step as requested. Task 3 is committed as `7dc32f0`. Task 4 implements shared authenticated API handlers, local/Vercel adapters, and the internal API container; these changes are pending unstaged review. Frontend sign-in and browser tests remain later tasks. Deployment is a separate ticket.
+CHR-5 is in progress on `maintenance/CHR-5`. Tasks 1–4 are committed; the authenticated API is commit `6cfd5f3`. Task 5 adds Clerk sign-in/sign-up, protected Focus/Inventory placeholders, account synchronization, and the full Compose application with source hot reload. Task 5 changes remain unstaged for review. The timer, reward selection, and owned inventory are future features. The committed Playwright smoke suite is Task 6; deployment is separate.
 
 - [Design specification](docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md)
 - [Implementation plan](docs/superpowers/plans/2026-10-23-chr-5-bootstrap.md)
@@ -22,7 +22,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open [the local application](http://localhost:5173). The page is a scaffold: sign-in, focus sessions, chests, and inventory do not work yet. Vite is bound to `0.0.0.0` for the planned container setup, so the development server is accessible on local network interfaces while running.
+Open [the local application](http://localhost:5173). Configure the Clerk settings below first. Sign-in and account synchronization are implemented; Focus and Inventory are explicitly labeled placeholders. Vite is bound to `0.0.0.0` for the planned container setup, so the development server is accessible on local network interfaces while running.
 
 If port 5173 is occupied or intercepted by another local service, select an available port explicitly:
 
@@ -30,7 +30,7 @@ If port 5173 is occupied or intercepted by another local service, select an avai
 pnpm dev --port 5174
 ```
 
-Vite uses a strict port setting and does not silently choose another port. Restarting or stopping the frontend server does not affect the separately managed Postgres data. The frontend remains disconnected until Task 5 wires Clerk and the API client into the UI.
+Vite uses a strict port setting and does not silently choose another port. Restarting or stopping the frontend server does not affect the separately managed Postgres data. Host Vite proxies `/api` to `http://localhost:3001`; host API development needs an explicitly host-reachable database. Use the full Docker setup below for the supported one-command flow.
 
 ## Workspace layout
 
@@ -49,19 +49,32 @@ Browser code may not import server API/database packages or use Node globals. Ru
 
 Prerequisite: Docker with Compose and a running Docker daemon. Docker images pin Node 24.20.0 and Postgres 17.11 by digest; pnpm 10.34.7 is installed inside the development image. Application processes run as the image's non-root `node` user. Host pnpm is optional for the Docker-only setup.
 
-Copy the environment example for reference:
+For a new checkout, copy the environment example if `.env` does not already exist:
 
 ```sh
-cp .env.example .env
+cp -n .env.example .env
 ```
 
-Start the current Compose setup:
+After filling in the Clerk development settings, start the complete application:
 
 ```sh
-docker compose up --build
+docker compose up --build -d --wait
 ```
 
-This starts Postgres, the one-shot migration/seed initializer, and the internal API. Fill in the Clerk settings described below before starting the API. Initialization waits for database health, migrates and seeds, then exits successfully; the API starts only after that success. The API and database have no host-published ports. The frontend container arrives in Task 5; `pnpm dev` still shows the disconnected scaffold. To start only the database without Clerk settings, use `docker compose up --build db-init`.
+Open [localhost:5173](http://localhost:5173). Startup runs in this order: dependency synchronization → healthy Postgres → successful migration/seed initialization → healthy API → frontend. The frontend is published only on host loopback; API and database stay internal. To start only the database without Clerk settings, use `docker compose up --build db-init`.
+
+If port 5173 is occupied/intercepted, set `WEB_PORT=5174` in your local `.env` and reopen [localhost:5174](http://localhost:5174). `CLERK_AUTHORIZED_PARTIES` must include the selected frontend origin. `WEB_PORT` changes Docker's host mapping; Vite still listens on container port 5173.
+
+Frontend/API source and public contracts are mounted read-only for hot reload. Dependency symlinks and Vite's writable cache belong to the container image; the shared pnpm dependency store lives in the project-owned `dependencies` volume. Host `node_modules` and `.env` are never mounted into the frontend. Compose passes only the publishable key and internal proxy target to it.
+
+After changing a package manifest or lockfile, refresh dependencies while preserving Postgres data:
+
+```sh
+docker compose down
+docker compose up --build -d --wait
+```
+
+The rebuilt image includes the new manifests and workspace dependency symlinks. `deps-init` synchronizes the retained dependency volume with that image's frozen lockfile before any application starts. Do not use `down --volumes` to refresh dependencies: that would reset the database too.
 
 The development database uses the internal hostname `db`, database/user/password `chronostasis`, and a persistent project-owned named volume. These are local fixtures, not deployment credentials. No database port is published to the host. Compose deliberately fixes its database destinations: an exported host `DATABASE_URL` cannot redirect its initializer toward another database. Deployment and Neon resources are a separate ticket.
 
@@ -148,9 +161,19 @@ docker compose exec api node -e "fetch('http://localhost:3001/api/me').then(asyn
 
 Expect 200 and 401 respectively. Do not print `docker compose config` or container environment dumps when real keys are configured; `docker compose config --quiet` validates without displaying values.
 
-For optional host API development, `pnpm dev:api` loads the root `.env` and listens on `API_PORT` (default 3001). You must supply a deliberately host-reachable `DATABASE_URL`; the Compose-only `db` hostname is not a host connection. Prefer Docker for the current setup. The frontend starts obtaining fresh Clerk session tokens and calling these routes in Task 5; API startup is not proof of a completed browser sign-in flow.
+For optional host API development, `pnpm dev:api` loads the root `.env` and listens on `API_PORT` (default 3001). You must supply a deliberately host-reachable `DATABASE_URL`; the Compose-only `db` hostname is not a host connection. Prefer Docker for the current setup. The frontend obtains a session token for POST initialization and another for the subsequent GET. “Account ready” appears only after the read returns the same persisted user. Failed sync shows a safe retry action; a 401 offers sign-in again. Requests are cancelled on unmount and the sync gate resets when the user/session changes.
 
 `apps/web/api/health.ts` and `me.ts` are thin future Vercel Function entrypoints backed by the same handlers. Runtime composition is in `apps/web/server/api.ts`, outside the public function directory. The SPA fallback excludes `/api` and all of its descendants, so missing API routes are never rewritten to HTML. Hosted invocation/deployment remains unverified and belongs to the deployment ticket.
+
+## Frontend routes and test account
+
+- `/sign-in/*` and `/sign-up/*`: Clerk prebuilt authentication, including nested verification steps.
+- `/`: protected Focus placeholder.
+- `/inventory`: protected Inventory placeholder, also supported on direct load/reload.
+
+Signed-out visitors are redirected to sign-in. Return destinations are restricted to the supported internal routes. Navigation has keyboard focus styles and a skip link. Timer/chest actions and collection contents are not simulated.
+
+For authenticated browser verification, create a dedicated development user under **Clerk Dashboard → Users**. Put its email in the ignored `.env` variable `E2E_CLERK_USER_EMAIL`. `E2E_CLERK_USER_PASSWORD` is optional for password-specific tests. Clerk’s recommended email-based testing helper creates a real session using the development backend secret; this works when password sign-in requires new-device email verification. Do not use a personal production account. These settings are for the test runner and are never passed into the frontend container. The repeatable root Playwright suite and `pnpm test:e2e` arrive in Task 6; temporary implementation verification does not stand in for that committed acceptance suite.
 
 ## Styling
 
@@ -195,7 +218,7 @@ pnpm test:hooks
 pnpm build
 ```
 
-Linting uses type-aware strict TypeScript rules, React Hooks rules, browser/server import boundaries, and zero allowed warnings. Type checking uses strict mode, explicit browser types, and additional indexed-access/optional-property checks. The build produces static assets in `apps/web/dist`. Workspace libraries emit declarations into their ignored `dist` folders for TypeScript project references. Source remains strictly checked in every workspace. `skipLibCheck` is scoped to the database and shared API packages because Drizzle and Clerk publish declaration errors involving optional drivers/modules and exact optional properties. Browser/contracts/tooling and the local API app retain declaration checking; runtime tests exercise the affected libraries.
+Linting uses type-aware strict TypeScript rules, React Hooks rules, browser/server import boundaries, and zero allowed warnings. Type checking uses strict mode, explicit browser types, and additional indexed-access/optional-property checks. The build produces static assets in `apps/web/dist`. Workspace libraries emit declarations into their ignored `dist` folders for TypeScript project references. Source remains strictly checked in every workspace. `skipLibCheck` is scoped to the database, shared API, and browser application projects because Drizzle/Clerk publish declaration errors involving optional drivers/modules, React 19 JSX names, and exact optional properties. Contracts, web tooling, and the local API runtime retain declaration checking. All source still uses strict TypeScript; runtime tests exercise the affected libraries.
 
 `pnpm test:unit` runs contract and database-configuration tests without Docker. `pnpm test:integration` covers real persistence, concurrent upserts, user isolation, migrations, and seeds with Docker. Empty test suites fail instead of silently passing. Playwright is added in its later task.
 
