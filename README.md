@@ -4,12 +4,12 @@ A mobile-first focus application where completed sessions will unlock chests con
 
 ## Bootstrap status
 
-CHR-5 is in progress on `maintenance/CHR-5`. Tasks 1–5 are committed; the authenticated API is `6cfd5f3` and the mobile application shell is `f9de4ac`. Task 6 adds isolated Playwright smoke testing for real Clerk sessions and persisted account identity. The timer, reward selection, and owned inventory are future features. Deployment is separate.
+CHR-5 is in progress on `maintenance/CHR-5`. Tasks 1–6 are committed; the isolated Playwright smoke-test setup is `002535d`. The timer, reward selection, and owned inventory are future features. Deployment is separate. Task 7 is finalizing architecture and operating documentation.
 
 - [Design specification](docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md)
 - [Implementation plan](docs/superpowers/plans/2026-10-23-chr-5-bootstrap.md)
 - [Repository instructions](AGENTS.md)
-- [Current and planned architecture](ARCHITECTURE.md)
+- [Architecture](ARCHITECTURE.md)
 
 ## Local development
 
@@ -22,7 +22,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open [the local application](http://localhost:5173). Configure the Clerk settings below first. Sign-in and account synchronization are implemented; Focus and Inventory are explicitly labeled placeholders. Vite is bound to `0.0.0.0` for the planned container setup, so the development server is accessible on local network interfaces while running.
+Open [the local application](http://localhost:5173). Configure the Clerk settings below first. Sign-in and account synchronization are implemented; Focus and Inventory are explicitly labeled placeholders. The Docker Compose setup is the supported one-command flow; the host `pnpm dev` command starts only Vite and expects the API at `http://localhost:3001`.
 
 If port 5173 is occupied or intercepted by another local service, select an available port explicitly:
 
@@ -109,7 +109,7 @@ docker compose down
 docker compose up --build
 ```
 
-`docker compose down --volumes` also deletes the development database and should be used only for an intentional data reset. It is never part of integration-test cleanup. After changing dependencies or source at this stage, rebuild the image; source mounts/hot reload for containerized application services are added with those services.
+`docker compose down --volumes` also deletes the development database and should be used only for an intentional data reset. It is never part of integration-test cleanup. Source changes in the mounted frontend/API workspaces hot-reload. After changing dependencies or a lockfile, use the rebuild procedure above so the image-owned workspace symlinks and shared dependency volume are synchronized.
 
 If initialization fails, fix the database settings/service and rerun `docker compose run --rm --build db-init`. The initializer exits nonzero and does not continue to seeds after a migration failure. Error messages omit connection credentials. If the Docker daemon is unavailable or inaccessible, restore daemon access before retrying; avoid changing another project's containers or port forwards.
 
@@ -243,5 +243,3 @@ node --check scripts/prefix-commit.mjs
 node --check scripts/install-hooks.mjs
 node --check scripts/test-hooks.mjs
 ```
-
-The final architecture and operational docs will be reconciled after all planned implementation checks.

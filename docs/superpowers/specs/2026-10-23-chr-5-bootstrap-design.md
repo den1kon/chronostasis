@@ -1,6 +1,6 @@
 # CHR-5: Bootstrap design
 
-Status: approved for implementation on 2026-10-23. Tasks 1 and 2 are committed (`d645c1c`, `cd62a97`); Task 3 user/item persistence and Compose foundation were verified; the chest catalogue requested on 2026-10-24 is now implemented and covered by 13 Postgres integration tests. Task 3 passed the authorized independent bug review after fixing its single finding; Security Review was skipped for this step as requested. Task 3 is committed as `7dc32f0`. Task 4 is committed as `6cfd5f3`. Task 5's authenticated mobile frontend and full Compose runtime is committed as `f9de4ac`. Task 6 adds separate signed-out and authenticated Playwright projects with isolated Compose data. The application bootstrap remains in progress.
+Status: approved for implementation on 2026-10-23. Tasks 1–6 are committed (`d645c1c`, `cd62a97`, `7dc32f0`, `6cfd5f3`, `f9de4ac`, `002535d`). Task 3 includes normalized user/item/chest persistence; Task 6 includes isolated signed-out and authenticated Playwright projects. Task 7 finalizes operating documentation and `ARCHITECTURE.md`. CHR-5 remains in progress pending Task 7 review/commit, final review permission, and explicit ticket-completion approval.
 
 ## Intent
 
@@ -61,7 +61,7 @@ Use a shared development image, non-root application processes where practical, 
 
 ## Task 3 local database implementation
 
-The database slice currently starts Postgres and a health-gated migration/seed initializer only; frontend/API services are added later. Compose always uses its fixed internal development connection, independent of host `DATABASE_URL` exports. CLI commands outside Compose read explicit environment settings and never load Clerk configuration.
+At the Task 3 implementation checkpoint, Compose starts Postgres and a health-gated migration/seed initializer; later Tasks 4–6 add the API and frontend services. The completed Compose stack always uses its fixed internal development connection, independent of host `DATABASE_URL` exports. CLI commands outside Compose read explicit environment settings and never load Clerk configuration.
 
 Integration tests run in a unique Compose project with their own `db-test` service and volume. `pnpm test:integration` builds and runs the suite, then cleans up only that invocation's resources. Test destination validation requires an explicit local `chronostasis_test` URL and rejects application destinations before opening a connection. Tests use unique user subjects and no database reset/truncation. Local verification covered initializer repeatability/failure and volume retention across container recreation.
 
@@ -137,9 +137,9 @@ Before pnpm exists, activation uses `node scripts/install-hooks.mjs`; Task 2 add
 
 ## Documentation and completion
 
-README covers prerequisites, external Clerk setup, env variables, container lifecycle, hot reload, data retention/reset, migrations/seeds, test account setup, every verification command, hook activation, and troubleshooting. Add `.dockerignore` so local secrets and `.git` are excluded from build context.
+README covers prerequisites, external Clerk setup, environment variables, container lifecycle, hot reload, data retention/reset, migrations/seeds, test account setup, every verification command, hook activation, and troubleshooting. `.dockerignore` excludes local secrets and `.git` from Docker build context.
 
-Maintain `ARCHITECTURE.md` from the current documentation update onward, clearly labeling implemented and planned components; after implementation and verification, finalize it with the actual workspace structure, HTTP/auth/data flows, local runtime, future hosting boundary, database ownership, test layers, and remaining limitations. Describe Vercel/Neon as intended hosting until separately deployed. Keep design/plan status aligned with reality; preserve historical decisions while recording material changes.
+Maintain `ARCHITECTURE.md` with implemented components and planned boundaries clearly distinguished. It now records the actual workspace structure, HTTP/auth/data flows, local runtime, future hosting boundary, database ownership, test layers, and remaining limitations. Describe Vercel/Neon as intended hosting until separately deployed. Keep design/plan status aligned with reality; preserve historical decisions while recording material changes.
 
 AGENTS.md requires documentation upkeep, one implementation-plan task per Git commit with a prepared ticket-prefixed subject, and executable commands once they exist. Each task includes its tests and directly related documentation. Planned subjects never bypass explicit unstaged-review confirmation before staging or committing. Current session rules use a lowercase imperative subject, omit Conventional Commit categories, and limit the full ticket-prefixed subject to 36 characters. No staging, committing, PR creation, final review dispatch, or completion claim is authorized by writing this spec/plan.
 

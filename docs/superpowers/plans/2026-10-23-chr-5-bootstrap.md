@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md` (read it before executing).
 
-Status: approved for implementation by the user on 2026-10-23. Task 1 was reviewed and committed as `d645c1c`. Task 2 was reviewed and committed as `cd62a97`. Task 3 includes the verified user/item foundation and implemented chest catalogue. The user authorized bug review only (Security Review skipped for this step), followed by commit if clear and continuation to Task 4. Task 3 is committed as `7dc32f0`. Task 4 is committed as `6cfd5f3`. Task 5 is committed as `f9de4ac`. Task 6 is in progress; Task 7 has not started.
+Status: approved for implementation by the user on 2026-10-23. Tasks 1–6 have been reviewed and committed: `d645c1c`, `cd62a97`, `7dc32f0`, `6cfd5f3`, `f9de4ac`, and `002535d`. Task 7 is the documentation-only task in progress; CHR-5 remains pending final reviews and explicit completion approval.
 
 ## Global Constraints
 
@@ -18,7 +18,7 @@ Status: approved for implementation by the user on 2026-10-23. Task 1 was review
 - Deployment is a separate ticket: no Vercel project linking, cloud deployment, or Neon resource creation in CHR-5.
 - Proposed baseline: Node 24 LTS, pnpm 10, Postgres 17. Verify dependency engine compatibility at implementation time; pin exact selected Node/container and package-manager versions and commit the generated lockfile.
 - Nothing is staged or committed without the user's explicit unstaged-diff review approval.
-- Current session rules: no Conventional Commit category; use a lowercase imperative verb and keep the complete ticket-prefixed subject within 36 characters.
+- Current repository rules: no Conventional Commit category; use a lowercase imperative verb and keep the complete ticket-prefixed subject within 36 characters. Task 1 and Task 2 retain their historical subjects from the earlier approved convention; new commits use the current rule.
 - Normalize chest/item metadata into `chests`, `items`, and `chest_items`; one initial chest type must not impose a singleton schema. The future opening flow awards exactly one eligible item.
 - Tailwind CSS / @tailwindcss/vite 4.3.3 belongs to Task 2’s existing commit; use utilities for component styling and `@theme` for shared tokens.
 - No development authentication bypass, hard-coded token, or test-only login endpoint is shipped.
@@ -46,7 +46,7 @@ The user waived existing testing gates while the tooling is being established. E
 - `packages/contracts/package.json`, `tsconfig.json`, `src/index.ts`: Zod public API schemas/types.
 - `packages/db/package.json`, `tsconfig.json`, `drizzle.config.ts`, `src/env.ts`, `src/client.ts`, `src/schema.ts`, `src/users.ts`, `src/seed.ts`, `src/seeding.ts`, `src/migrations.ts`, `drizzle/`, `tests/users.integration.test.ts`, `tests/catalogue.integration.test.ts`: database implementation and migration artifacts.
 - `packages/api/package.json`, `tsconfig.json`, `src/env.ts`, `src/auth.ts`, `src/handlers.ts`, `src/vercel.ts`, `src/index.ts`, corresponding `*.test.ts`: shared API and Vercel conversion.
-- `vitest.config.ts`, `vitest.integration.config.ts`, `playwright.config.ts`, `tests/e2e/auth.setup.ts`, `tests/e2e/signed-out.spec.ts`, `tests/e2e/bootstrap.spec.ts`, `scripts/check-e2e-env.mjs`: verification.
+- `vitest.config.ts`, `vitest.integration.config.ts`, `playwright.config.ts`, `tests/e2e/auth.setup.ts`, `tests/e2e/signed-out.spec.ts`, `tests/e2e/authenticated.spec.ts`, `scripts/check-e2e-env.mjs`: verification.
 - `.githooks/commit-msg`, `scripts/prefix-commit.mjs`, `scripts/install-hooks.mjs`, `scripts/test-hooks.mjs`: ticket prefix automation.
 - `README.md`, `ARCHITECTURE.md`, `AGENTS.md`, this plan, and the design spec: documentation.
 
@@ -54,13 +54,13 @@ The user waived existing testing gates while the tooling is being established. E
 
 1. `[CHR-5] chore: define ticket workflow`
 2. `[CHR-5] chore: scaffold typescript workspaces`
-3. `[CHR-5] feat: add local postgres persistence`
-4. `[CHR-5] feat: add authenticated api`
-5. `[CHR-5] feat: add mobile application shell`
-6. `[CHR-5] add e2e smoke tests`
+3. `[CHR-5] bootstrap local postgres` — committed as `7dc32f0`.
+4. `[CHR-5] add authenticated api` — committed as `6cfd5f3`.
+5. `[CHR-5] add mobile app shell` — committed as `f9de4ac`.
+6. `[CHR-5] add e2e smoke tests` — committed as `002535d`.
 7. `[CHR-5] document architecture`
 
-Implement in this order. Task 1 installs the hook before the first repository commit, so every planned commit receives its ticket prefix. Before pnpm exists, use the Node hook commands specified there. Do not create empty commits to check off tasks. If implementation or review changes a commit boundary, update this plan and its prepared subject before proceeding. Keep each task's documentation updates with its commit; the final documentation task consolidates the verified whole-project architecture.
+Implement in this order. Task 1 installs the hook before the first repository commit, so every planned commit receives its ticket prefix. Before pnpm exists, use the Node hook commands specified there. Do not create empty commits to check off tasks. If implementation or review changes a commit boundary, update this plan and its prepared subject before proceeding. Keep each task's documentation updates with its commit; the final documentation task consolidates the verified whole-project architecture. Completed historical subjects are retained as recorded and are not templates for future commits.
 
 ## Task 1: Ticket workflow, planning artifacts, and commit hook
 
@@ -123,9 +123,9 @@ Implement in this order. Task 1 installs the hook before the first repository co
 
 ## Task 3: Database schema, normalized chest catalogue, and persistence
 
-**Planned commit:** `[CHR-5] feat: add local postgres persistence`
+**Planned commit:** `[CHR-5] bootstrap local postgres`
 
-**Input to Git (hook adds prefix):** `feat: add local postgres persistence`
+**Input to Git (hook adds prefix):** `bootstrap local postgres`
 
 **Commit boundary:** this task’s listed files, tests, dependency/lockfile changes, and directly related documentation only.
 
@@ -154,7 +154,7 @@ Implement in this order. Task 1 installs the hook before the first repository co
 - [x] Run migrations and catalogue seeds twice against an isolated database and verify stable counts: 1 initial chest, 3 items, 3 links. Verify the additive migration preserves existing users/items, and verify later added chest definitions survive reseeding. Update Compose verification expectations to cover these counts and persistence after container recreation.
 - [x] Update README and `ARCHITECTURE.md` from planned to implemented only after verification. Rerun frozen install, lint, typecheck, unit/integration/hook tests, production build, and migration/schema consistency check. Preserve the prepared Task 3 commit subject and unstaged-review gate.
 
-- [x] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `feat: add local postgres persistence`. Verify the resulting subject is exactly `[CHR-5] feat: add local postgres persistence` and has no message body. If review is pending, leave the task uncommitted.
+- [x] **Review and commit gate:** the user approved the reviewed Task 3 implementation and requested the authorized bug review before staging and commit. After the finding was resolved and verification passed, staged only Task 3 files and committed with input `bootstrap local postgres`. Verified commit `7dc32f0` has subject `[CHR-5] bootstrap local postgres` and no body.
 
 
 **Historical verification evidence (before chest extension):** 25 unit tests and 6 real-Postgres integration tests passed. Isolated Compose verification ran the initializer twice (exactly 3 catalogue rows), recreated the database container while retaining the same user UUID and seed rows, checked nonzero migration failure/skipped seed with no secret disclosure, and confirmed no published database port. Verification projects/volumes were removed afterward. Final frozen install, lint, typecheck, production build, all 37 hook tests, and migration/schema consistency check passed. `pnpm db:generate` reported no schema changes for the earlier user/item schema. Chest extension evidence is recorded separately below.
@@ -204,7 +204,7 @@ expect(deps.ensureUser).not.toHaveBeenCalled();
 
 **Verification evidence:** 84 unit tests pass; initial shared-handler/auth/env stubs produced 33 failing cases and adapter stubs produced seven failing parity cases. Real SDK cryptographic checks use an isolated JWKS boundary. Container startup waited for migrations/seeds; internal probes returned 200/401/404/405/413 and a safe 503 while the scratch database was stopped. Configured Clerk key/issuer consistency and a read-only JWKS request passed with no values displayed. Lint/type checks and the static build pass. The expanded image passed all 13 Postgres integration tests. Hosted Vercel invocation and real browser authentication remain unverified.
 
-**Execution decisions:** backend verification retrieves JWKS using the secret key, so no separate JWT PEM variable is needed. `skipLibCheck` is scoped to the shared API as well as DB because the installed Clerk/Drizzle third-party declarations fail strict declaration checking; source strictness and runtime tests remain. The latest session-provided Git rules take precedence over the earlier Conventional Commit/length policy for the prepared Task 4 subject. No staging/commit permission is assumed for this task.
+**Execution decisions:** backend verification retrieves JWKS using the secret key, so no separate JWT PEM variable is needed. `skipLibCheck` is scoped to the shared API as well as DB because the installed Clerk/Drizzle third-party declarations fail strict declaration checking; source strictness and runtime tests remain. The Task 4 subject follows the active repository instructions.
 
 
 **Commit:** user approved staging/commit and explicitly requested no Bugbot. Committed as `6cfd5f3` with exactly one ticket prefix and no body.
@@ -264,7 +264,7 @@ expect(deps.ensureUser).not.toHaveBeenCalled();
 - [x] Run tests before any UI corrections; the authenticated and signed-out flows passed without product UI changes.
 - [x] Run `pnpm test:e2e` against a uniquely named isolated Compose project. All four signed-out/setup/authenticated tests passed. Run `pnpm test:e2e:signed-out` with `E2E_CLERK_USER_EMAIL` empty; its public-route test passed. Both projects removed only their own database/dependency volumes.
 
-- [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `add e2e smoke tests`. Verify the resulting subject is exactly `[CHR-5] add e2e smoke tests` and has no message body. If review is pending, leave the task uncommitted.
+- [x] **Review and commit gate:** the user reviewed and approved the unstaged Task 6 changes, then explicitly authorized staging and commit. Staged only the 19 intended E2E/documentation files, inspected the staged patch, and committed with input `add e2e smoke tests`. Verified commit `002535d` has subject `[CHR-5] add e2e smoke tests`, no body, and a clean worktree.
 
 The Playwright service uses a separate Compose project and project-scoped Postgres volume. Its test runner shares the frontend's network namespace so Chromium can use `http://localhost:5173`; the API allowlist continues to validate that exact local origin. The API and E2E runner receive Clerk's backend key; only the runner receives the dedicated account email, and the frontend receives only the publishable key. Signed-out tests have no Clerk setup dependency; authenticated tests use a separate setup project and stored test session. `Dockerfile.e2e` starts from the pinned Playwright browser image and installs Node 24.20.0 in a private prefix, preserving the workspace engine pin.
 
@@ -285,11 +285,11 @@ The Playwright service uses a separate Compose project and project-scoped Postgr
 
 **Files:** README.md, ARCHITECTURE.md, AGENTS.md, design spec and this plan.
 
-- [ ] Write README setup and troubleshooting from the actual tested commands, including Docker-only operation, optional host pnpm, Clerk setup, data retention/reset, migrations, seeds, tests, and hooks.
-- [ ] After implementation verification, finalize the existing `ARCHITECTURE.md` to describe actual workspace/runtime/auth/data/test flows, the Tailwind/Vite styling pipeline, and future hosting boundaries. Do not describe undeployed infrastructure as live.
-- [ ] Finalize AGENTS.md with actual commands and documentation upkeep. Preserve commit review, subagent permission, subject length excluding prefix, rewriting provenance, and PR restrictions.
-- [ ] Review all documentation for ticket-induced changes; mark design decisions changed during execution and checkbox states honestly. Record omitted/deferred scope and credentials-dependent verification.
-- [ ] Run `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`, plus clean Compose startup, restart/persistence, and initializer-failure checks. Record exact outcomes. Do not invoke destructive database resets against developer data.
+- [x] Reconcile README setup/troubleshooting with the Docker-first workflow, optional host pnpm commands, Clerk setup, data retention/reset, migrations, seeds, tests, hooks, and hot reload.
+- [x] Finalize `ARCHITECTURE.md` with implemented workspace/runtime/auth/data/test flows, the Tailwind/Vite styling pipeline, and the future Vercel/Neon hosting boundary.
+- [x] Finalize AGENTS.md with the current repository commit rules, review permissions, verification commands, documentation upkeep, rewrite provenance, and PR restriction.
+- [x] Review ticket documentation, record Task 6’s commit, and retain deferred product/deployment scope and Clerk credential requirements.
+- [x] Run `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`, plus Compose config, startup/persistence, and isolated initializer-failure checks. Record exact outcomes. No development database reset was used.
 
 - [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `document architecture`. Verify the resulting subject is exactly `[CHR-5] document architecture` and has no message body. If review is pending, leave the task uncommitted.
 
@@ -308,7 +308,7 @@ The Playwright service uses a separate Compose project and project-scoped Postgr
 - API/auth/runtime adapters: Task 4; real auth enforcement, safe failures, adapter parity, and internal API service.
 - Complete Docker Compose and mobile frontend connectivity: Task 5; startup ordering, hot reload, dependency refresh, persistence, initialization failure, and authenticated POST/GET flow.
 - Playwright smoke coverage: Task 6; real Clerk sign-in and no silently skipped acceptance.
-- Current architecture and finalized rules: Task 7; `ARCHITECTURE.md` starts as an explicitly labeled current/planned overview and is finalized after implementation verification.
+- Current architecture and finalized rules: Task 7; `ARCHITECTURE.md` reflects the verified implementation and labels Vercel/Neon, PWA/native packaging, and product behavior as future work.
 - Each of the seven tasks contains one prepared commit subject, scoped file ownership, verification steps, and its own permission-gated commit checkpoint. Directly related documentation is included in each task; final acceptance is not an extra empty commit.
 - Deployment, PWA/native packaging, and product functionality remain deferred.
 
@@ -319,4 +319,8 @@ Recommended execution: native execution in this session after user review. The d
 Seven new catalogue tests failed before the extension and then passed; that checkpoint had 13 Postgres integration tests and 25 unit tests. The tests cover foreign keys, duplicate pairs, restricted deletion, cross-type eligibility, reseeding preservation, and forced seed failure rollback. Security Review is skipped for the current review/commit step at the user’s request. Dedicated Bugbot type is not exposed; the independent review uses the Bugbot instructions and is reported as a fallback.
 
 
-Task 3 follow-up: independent bug review identified one pg query-parameter destination override. Three regression cases failed before the fix; all 29 unit tests and 13 real-Postgres integration tests now pass. The reviewer confirmed the finding resolved. Lint, type checking, and production build pass. The latest session-provided Git instructions require an imperative subject without a Conventional Commit type and a 36-character total limit; the current Task 3 subject is therefore `[CHR-5] bootstrap local postgres` (input `bootstrap local postgres`). Earlier prepared subjects above record the previously approved convention.
+Task 3 follow-up: independent bug review identified one pg query-parameter destination override. Three regression cases failed before the fix; all 29 unit tests and 13 real-Postgres integration tests now pass. The reviewer confirmed the finding resolved. Lint, type checking, and production build pass. The Task 3 subject is `[CHR-5] bootstrap local postgres` (input `bootstrap local postgres`) under the then-current repository instructions.
+
+## Task 7 verification evidence
+
+The docs-only change passed `git diff --check`. In the current Node 24.20.0 / pnpm 10.34.7 development container, `pnpm lint`, `pnpm typecheck`, `pnpm test:unit` (103/103), and `pnpm build` passed. The hook suite passed 37/37 on the host using pinned pnpm 10.34.7 under the available Node 24.19.0; the container image does not include Git, which the temporary-repository hook tests require. The isolated Postgres runner passed 13/13 and cleaned only its own volumes. `pnpm test:e2e` passed all four signed-out/setup/authenticated browser checks in its pinned Node 24.20.0 test container and removed its project volumes. `docker compose config --quiet` and a full `docker compose up --build -d --wait` passed. Read-only catalogue counts were `0 users, 3 items, 1 chest, 3 links` before and after startup/recreation. A uniquely named temporary Compose project with an intentionally failing initializer exited nonzero (42) and left API/frontend unstarted; its containers, network, volumes, and temporary override file were removed. No Bugbot or Security Review was run.

@@ -2,106 +2,83 @@
 
 Updated: 2026-10-25.
 
-This document separates the current implementation from the intended bootstrap architecture. It was created at the user's request during the Task 3 design update; planned components are not claims of implemented or verified behavior.
+## Scope and deployment status
 
-## Current implementation
+Chronostasis is currently a local mobile-first application foundation: a React client signs in with Clerk, calls a TypeScript API, and persists an application user and catalogue in PostgreSQL. Focus timing, chest opening, loot selection, and owned inventory are not implemented. Vercel and Neon are intended deployment targets, but no cloud project or deployment is configured by this ticket. PWA packaging and Capacitor/iOS packaging are also future work.
 
-- Tasks 1 and 2 are committed on `maintenance/CHR-5`: Git ticket-prefix workflow, pnpm workspace, strict TypeScript/ESLint, React/Vite, and Tailwind CSS.
-- Task 3 is committed as `7dc32f0`. It includes Postgres, Drizzle migrations, idempotent item seeding, user upsert/read operations, contracts, and isolated database tests.
-- The normalized chest catalogue is implemented in Task 3, including an additive migration, transactional catalogue seed, and real-Postgres tests. The authorized independent bug review found one connection URL override defect; it is fixed, regression-tested, and confirmed resolved on follow-up. Security Review was skipped for this step as requested.
-- Task 4 adds Clerk-backed shared handlers, a local HTTP API, Vercel Function adapters, and a health-gated API container. Task 4 is committed as `6cfd5f3`. Task 5 adds the Clerk frontend flow, protected mobile shell, typed client, and full Compose startup with hot reload; it is committed as `f9de4ac`. Task 6 adds isolated signed-out/authenticated Playwright projects, a Clerk session setup project, and a unique Compose/Postgres test stack.
+## Workspace
 
-## Runtime boundaries
+The pnpm monorepo uses TypeScript, React, Vite, Tailwind CSS, Vercel Functions adapters, Neon-compatible PostgreSQL, Drizzle, Clerk, Vitest, Playwright, and Docker Compose.
 
-The frontend now loads Clerk, obtains bearer session tokens, initializes the application user, and reads that same user back through the API before displaying account-ready status. Compose synchronizes dependencies, starts Postgres, initializes its schema/catalogue, starts the API, then Vite. Only Vite is host-published on loopback.
+- `apps/web` contains the Vite React application, Clerk provider and auth routes, protected Focus/Inventory placeholders, typed API client, and thin Vercel Function entrypoints. `apps/web/server/api.ts` composes the server runtime for those entrypoints.
+- `apps/api` is the local Node HTTP adapter. It loads local environment configuration and serves the same shared API handlers as the Vercel adapters.
+- `packages/api` owns server configuration, Clerk session verification, shared Web Request/Response handlers, database composition, and the Node/Vercel adapters.
+- `packages/contracts` defines browser-safe Zod response schemas and inferred types.
+- `packages/db` owns the Drizzle schema, migrations, PostgreSQL pool, repository operations, and transactional catalogue seed.
+- `tests/e2e` contains signed-out and authenticated Playwright browser tests.
+- `scripts` contains the commit-hook tooling and isolated database/Playwright test runners.
 
-The implemented runtime flow is React → same-origin HTTP `/api` → shared authenticated TypeScript handlers → Drizzle/pg → Postgres. A local Node adapter now serves the shared handlers; thin Vercel adapters are prepared for later deployment. The backend uses Clerk’s real verifier for bearer sessions. The frontend uses Clerk’s React provider and prebuilt sign-in/sign-up components, with React Router in declarative mode. The backend derives ownership from the verified identity and holds database credentials.
+Workspace libraries emit declarations for TypeScript project references. Type-aware ESLint and strict source type checking run across the workspace. `skipLibCheck` is limited to database, API, browser, and tooling projects to work around errors in installed Drizzle/Clerk declarations; contracts and the local runtime retain declaration checking.
 
-Vercel is the intended frontend/API host, and Neon is the intended hosted Postgres provider. Both belong to the separate deployment ticket. Future Capacitor packaging can reuse the React frontend and HTTPS API; PWA/native packaging is not part of CHR-5.
+## Local runtime and request flow
 
-## Workspace responsibilities
+`docker compose up --build -d --wait` starts the dependency initializer, PostgreSQL, database migration/seed initializer, local API, and Vite frontend in dependency order. Only the frontend is published to the host, bound to loopback; the API and database remain on the Compose network. Postgres uses a named volume. Source mounts support frontend/API hot reload, while a container-owned dependency volume and image-owned workspace symlinks keep host dependencies and `.env` out of application containers.
 
-- `apps/web`: React/Vite frontend, Clerk provider/auth routes, protected mobile placeholders, and typed HTTP client. Its account gate requests a token for POST, then another for GET, verifies the same returned user, and handles cancellation/retry. Tailwind's Vite plugin generates styles from component utilities; `src/styles.css` holds the import, shared theme tokens, and document-level base styles.
-- `packages/contracts`: browser-safe Zod response schemas and inferred types.
-- `packages/db`: server-only schema, connection configuration, migrations, seeds, and repository code. It uses `pg` with bounded pooling and strict certificate verification for hosted destinations.
-- `apps/api`: Node listener, root environment loading, bounded HTTP timeouts, and shutdown.
-- `packages/api`: validated server settings, Clerk verification, injected shared handlers, real database composition, and Node/Vercel adapters.
-- `apps/web/api`: thin Vercel entrypoints; `apps/web/server/api.ts` lazily reuses the real runtime. The SPA fallback excludes all `/api` paths.
-- `scripts`: hook installation/processing/tests and a Docker integration-test runner.
-- `docs/superpowers`: design requirements and a task-per-commit implementation plan. Prepared subjects do not bypass unstaged review.
-
-Workspace libraries emit declarations for TypeScript references. Database/API/browser-app/tooling projects skip third-party declaration checking because the installed Drizzle/Clerk declarations contain optional-module, React JSX namespace, and exact-optional-property errors. Source remains strictly checked, and contracts/local-runtime declaration checking stays enabled.
-
-## Implemented HTTP and authentication flow
-
-The local Node runtime and Vercel entrypoints both convert requests into the same Web `Request`/`Response` handler. Conversion preserves method, URL, headers, and raw body bytes; both adapters reject bodies above 64 KiB before dispatch, including chunked input. Vercel's lazy parsed-body getter is never accessed. Local HTTP request/header timeouts bound stalled clients.
-
-`GET /api/health` probes Postgres and returns safe 200/503 JSON. `POST /api/me` verifies the Clerk bearer session and upserts only its verified `sub`; `GET /api/me` reads that subject's row. Body/query identity never determines ownership. The verifier checks signatures, expiry, expected issuer, and allowed frontend origins, and rejects pending sessions. User/error responses are not cacheable. Unsupported methods receive 405 with `Allow`; missing routes receive 404. Unexpected failures expose no SQL, token, or configuration values.
-
-Production composition always uses the real Clerk SDK and Drizzle repository. Unit tests inject dependencies or replace the SDK/JWKS boundary; there is no shipped development authentication bypass. The browser imports only public contracts and the typed HTTP client. Account synchronization aborts pending requests on unmount; a user/session key prevents responses for an old identity from unlocking the new identity’s UI. “Account ready” requires both initialization and a matching persisted read.
-
-## Implemented database foundation
-
-The original `0000_bootstrap.sql` establishes:
-
-- `users`: UUID primary key, unique non-null Clerk subject, timezone-aware creation/update timestamps. Public user responses expose only UUID and Clerk subject.
-- `items`: stable text primary key and non-null display name. Three initial definitions are Rusty key, Copper ring, and Blue gem.
-
-User initialization uses one conflict-safe upsert, preserving the UUID on retries and concurrent initialization. The newer `0001_chest_catalogue.sql` adds the normalized chest catalogue described below without rewriting the original migration. Seeding now upserts the complete catalogue transactionally.
-
-## Normalized chest catalogue
-
-The user requested one initial chest type with room for more types later. The schema includes two additional catalogue tables:
-
-- `chests`: stable text primary key `id` and non-null `name`. Seed `basic-chest` / Basic chest. The schema permits additional chest definitions without a migration or singleton constraint.
-- `chest_items`: non-null `chest_id` and `item_id` foreign keys, with composite primary key `(chest_id, item_id)`. Restrictive foreign keys prevent silent deletion of referenced definitions. Link the basic chest to the three existing item definitions.
-
-The target relationships are:
+The browser flow is:
 
 ```mermaid
-erDiagram
-    chests ||--o{ chest_items : offers
-    items ||--o{ chest_items : eligible_for
+flowchart LR
+  Browser[React + Clerk in browser] -->|same-origin /api| Vite[Vite dev server]
+  Vite -->|proxy| Node[Local Node adapter]
+  Node --> Shared[Shared authenticated handlers]
+  Shared -->|Drizzle + pg| DB[(PostgreSQL)]
+  Shared -->|verify session| Clerk[Clerk backend]
 ```
 
-Chest metadata exists only on `chests`, item metadata only on `items`, and eligibility only on junction rows. Do not duplicate names on links, store item IDs in arrays/JSON, or put a single chest ID on an item: the same item can be eligible for multiple chest types.
+The frontend obtains Clerk bearer tokens and calls `POST /api/me` to idempotently create the current application user, then `GET /api/me` to confirm the persisted identity. “Account ready” requires both responses to refer to the same user. Requests are scoped to the active user/session and cancelled when the relevant component unmounts.
 
-A chest definition is not an owned chest instance or a reward event. Three eligible item links form a loot pool; the later opening feature still awards exactly one item. Ownership, focus sessions, opening history, reward probabilities, and inventory are separate future work and must not be inferred from catalogue rows.
+The local Node adapter and Vercel Functions entrypoints convert requests to the same Web `Request`/`Response` handlers. Both preserve request method, headers, and raw body bytes, enforce a 64 KiB body limit, and return the same safe JSON error contract. The Vercel adapters are implemented but hosted invocation has not been verified.
 
-The extension uses the additive `0001_chest_catalogue.sql` migration; the original migration is unchanged. `seedCatalogue` uses one transaction to upsert item definitions, upsert chest definitions, and insert missing eligibility links. Reseeding preserves additional definitions/links. A forced link failure was tested to roll back earlier item updates.
+## Authentication and API
 
-## Local data and environment
+Clerk is the only identity provider. The backend verifies session signatures, issuer, expiry, allowed frontend origin, and session status before database access. The verified Clerk subject is the only identity used for persistence; request-body fields do not select a user. Missing or invalid credentials return 401. Responses containing user data or errors are not cached. Unexpected failures do not expose tokens, configuration, SQL, or stack traces.
 
-Compose pins Node 24.20.0 and Postgres 17.11 by image digest. Application image processes run as the non-root `node` user. The database has no host-published port; its data lives in a project-owned named volume. The initializer waits for database health and stops before seeding if migration fails; the API waits for initializer success and probes its own database connection for health. The API is internal on port 3001. The frontend waits for API health and proxies `/api` to it, preserving the browser origin. Its container receives only the public Clerk key and proxy target, with no secret/test-password environment or `.env` mount.
+- `GET /api/health` probes the database and returns a safe 200 or 503 response.
+- `POST /api/me` authenticates and conflict-safely initializes the persisted application user.
+- `GET /api/me` authenticates and reads the persisted application user.
 
-Compose fixes its local database destination so a host production URL cannot redirect initialization. Host CLI operations read explicit `DATABASE_URL` and optional `MIGRATION_DATABASE_URL`; they do not depend on Clerk or automatically load `.env`. `.env` and local execution artifacts are excluded from Git and the Docker build context.
+The browser receives only the Clerk publishable key. Clerk's secret key is used by the server and E2E runner, never exposed through a Vite variable or frontend image. There is no authentication bypass or test-only login endpoint.
 
-A container-owned `dependencies` volume holds the shared pnpm virtual store. Workspace dependency symlinks remain in the image, so host `node_modules` cannot leak into containers. Source is mounted read-only for frontend/API hot reload. After a dependency change, `docker compose down` followed by `docker compose up --build -d --wait` lets `deps-init` synchronize the dependency volume before the application starts.
+## Data model
 
-`docker compose down` retains development data. Deleting the development volume is an explicit reset, never an integration-test prerequisite.
+`0000_bootstrap.sql` creates:
 
-## Verification and remaining work
+- `users`: UUID primary key, unique non-null Clerk subject, and timezone-aware creation/update timestamps.
+- `items`: stable text primary key and display name. The initial seed defines Rusty key, Copper ring, and Blue gem.
 
-Unit tests cover public contracts, environment validation, isolation/TLS settings, authentication before database access, safe HTTP failures, both adapters, and real Clerk cryptographic verification against an isolated signing fixture. Real Postgres integration tests cover user persistence/concurrency/isolation and migration/item-seed repeatability. Hook tests use temporary repositories. The current bootstrap includes 101 unit tests, 13 real-Postgres integration tests, and 37 hook tests. Container probes cover 200/401/404/405/413 and a safe 503 when the scratch database stops. The configured Clerk keys were checked without displaying values; live browser verification and the repeatable suite outcome are recorded in the implementation plan. Lint, type checking, and the production build are also required before commit.
+`0001_chest_catalogue.sql` adds a normalized loot catalogue:
 
-The integration runner creates a unique Compose project with its own `chronostasis_test` database and volume, then cleans up only that invocation's resources. Destination validation rejects the development `db` host, remote hosts, other database names, and an application database destination. Tests do not truncate or reset the developer database.
+- `chests`: stable text primary key and name. The initial seed adds `basic-chest` / Basic chest.
+- `chest_items`: foreign keys to `chests` and `items`, with a composite primary key `(chest_id, item_id)`.
 
-Chest integration coverage verifies initial catalogue counts, both foreign keys, composite-key uniqueness, restricted deletion, one item linked to multiple chest types, idempotent reseeding that preserves later definitions, and transactional rollback. Separate Compose verification checks additive upgrade from the earlier database image and retention across container recreation; its result is recorded in the implementation plan.
+The seed upserts item and chest definitions and inserts missing eligibility links in one transaction. Additional chest types or links can be added without schema changes. The three item links describe eligible rewards, not chest contents: the future chest-opening flow is intended to award exactly one item. There is no owned-chest, opening-history, reward probability, focus-session, or inventory model yet.
 
-After the complete bootstrap is implemented, reconcile this document with the actual API/authentication/runtime wiring and verification outcomes. Final Bugbot/Security Review runs need user permission, and ticket completion requires passing checks, resolved or explicitly ignored findings, and the user's explicit completion approval.
+Database pools are bounded. Hosted connections require certificate verification; local Compose connections use the local non-TLS server. Migrations support a separate direct URL, falling back to the application database URL when unset. Compose uses fixed local-only database credentials and destinations so a host environment variable cannot redirect initialization to another database.
 
+## Styling and mobile layout
 
-## Task 5 verification
+The web workspace registers the official Tailwind CSS Vite plugin. Components use Tailwind utilities; `apps/web/src/styles.css` imports Tailwind, defines shared `@theme` tokens, and contains document-level base styles. Vite generates styles in development and production builds. The signed-in Focus and Inventory routes are mobile-first placeholders; no timer or loot behavior is simulated.
 
-A real development Clerk account was signed in with the official email-based test helper. The password helper reached `needs_client_trust`, so it could not complete the instance's additional email verification; no security setting was disabled. The supported helper minted a genuine Clerk session, and the actual API verified its tokens normally. The repeatable Playwright setup uses the same supported email helper; it does not claim to automate the interactive email-verification screen.
+## Verification and isolation
 
-At a 390 × 844 CSS viewport, the browser reached account-ready status, confirmed persisted identity across reload, navigated to Inventory, loaded Inventory directly, and signed out. Neither view overflowed horizontally. Keyboard focus reached the sign-in field, and a temporary source edit hot-reloaded and was restored. The repeatable suite uses a unique Compose project, dedicated Postgres volume, and a Chromium test container sharing the frontend's localhost network namespace.
+The root checks are `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`.
 
-Separate scratch Compose projects verified a dependency/lockfile change followed by `down` / `up --build -d --wait` preserved the same database user UUID and catalogue while installing the added dependency. A failed initializer prevented API/frontend startup. Full Compose recreation also retained the actual authenticated user UUID and catalogue. These checks cleaned up only their own volumes. No development database reset was used to refresh dependencies.
+- Unit tests cover contracts, server configuration, authentication, request/response behavior, adapter parity, and frontend API/account states.
+- Integration tests use a unique Compose project and isolated `chronostasis_test` database volume for real migrations, user upserts, and catalogue constraints. They clean up only their own resources and do not reset development data.
+- Hook tests use temporary repositories and exercise the ticket-prefix hook without creating test commits in Chronostasis.
+- Playwright tests run signed-out and authenticated browser flows in Chromium at a mobile viewport. The authenticated suite requires a dedicated Clerk development test user and fails with missing setting names rather than silently skipping coverage. Each invocation creates and removes its own Compose project and database/dependency volumes.
+- The verified Task 6 run passed 103 unit tests, 13 PostgreSQL integration tests, 37 hook tests, four authenticated/signed-out browser tests, and one signed-out-only browser test. Lint, strict type checking, and the production build also passed. Exact per-task outcomes are recorded in the implementation plan.
 
+## Hosting boundary
 
-## Task 6 smoke-test runtime
-
-`pnpm test:e2e` checks required Clerk settings before building or starting containers. Missing values report variable names only; authenticated coverage cannot silently skip. The signed-out-only command requires the Clerk app keys but does not require a test-user email. The authenticated Playwright project depends on a setup project that uses Clerk's supported email-based helper to create a real development session. It verifies API POST/GET identity equality, reload persistence, protected Inventory routing, unauthenticated 401 behavior, and a 390 × 844 layout.
-
-Each run uses a unique Compose project and Postgres volume, initializes and seeds that database, waits for API/web health, and shares the web container network namespace with Chromium to retain the `localhost:5173` origin. Cleanup removes only that invocation's containers and volumes. The API and E2E runner receive the Clerk backend key, only the E2E runner receives the test-account email, and the web container receives only the publishable key. The verified run passes four authenticated/signed-out tests; a separate signed-out-only run passes with the account email empty.
+The intended hosted topology is a static Vite build and Vercel Functions connected to Neon PostgreSQL. `apps/web/api` already contains the Vercel adapters and routing configuration, but this repository has not been linked to a Vercel project, deployed, or connected to a Neon database. Cloud resource setup and deployment belong to a separate ticket. A future PWA or Capacitor shell can reuse the React client and HTTPS API, with its own platform/auth callback work.
