@@ -19,7 +19,7 @@
     "test:e2e": "node scripts/run-e2e.mjs",
     "test:e2e:signed-out": "node scripts/run-e2e.mjs --signed-out",
     "hooks:install": "node scripts/install-hooks.mjs",
-    "build": "pnpm --filter @chronostasis/web build",
+    "build": "corepack pnpm --filter @chronostasis/web build",
     "db:generate": "pnpm --filter @chronostasis/db db:generate",
     "db:migrate": "pnpm --filter @chronostasis/db db:migrate",
     "db:seed": "pnpm --filter @chronostasis/db db:seed",
