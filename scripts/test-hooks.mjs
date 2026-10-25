@@ -36,8 +36,12 @@ function fixture(t, branch = 'feature/CHR-1234') {
     )
       delete env[key];
   }
-  const run = (command, args) =>
-    spawnSync(command, args, {cwd: root, env, encoding: 'utf8'});
+  const run = (command, args, extraEnv = {}) =>
+    spawnSync(command, args, {
+      cwd: root,
+      env: {...env, ...extraEnv},
+      encoding: 'utf8',
+    });
   const git = (...args) => {
     const result = run('git', args);
     assert.equal(result.status, 0, result.stderr);
@@ -45,27 +49,50 @@ function fixture(t, branch = 'feature/CHR-1234') {
   };
   git('init', '--quiet', `--initial-branch=${branch}`);
   const messagePath = join(root, 'commit message.txt');
+  const withFakePreCommit = () => {
+    const bin = join(root, 'bin');
+    const executable = join(bin, 'pre-commit');
+    mkdirSync(bin, {recursive: true});
+    writeFileSync(
+      executable,
+      '#!/bin/sh\nif [ "$1" = "--version" ]; then echo "pre-commit 3.8.0"; exit 0; fi\nprintf "%s\\n" "$*" >> "$PRECOMMIT_LOG"\n',
+    );
+    chmodSync(executable, 0o755);
+    return {
+      PATH: `${bin}:${process.env['PATH'] ?? ''}`,
+      PRECOMMIT_LOG: join(root, 'pre-commit.log'),
+    };
+  };
   return {
     root,
     git,
     run,
+    withFakePreCommit,
+    gitWithEnv(extraEnv, ...args) {
+      const result = run('git', args, extraEnv);
+      assert.equal(result.status, 0, result.stderr);
+      return result.stdout.trim();
+    },
     apply(message) {
       writeFileSync(messagePath, message);
       const result = run('sh', [hook, messagePath]);
       return {...result, message: readFileSync(messagePath, 'utf8')};
     },
-    install() {
-      return run(process.execPath, [installer]);
+    install(extraEnv = {}) {
+      return run(process.execPath, [installer], extraEnv);
     },
     copyHookFiles() {
       for (const relative of [
+        '.githooks/pre-commit',
         '.githooks/commit-msg',
         'scripts/prefix-commit.mjs',
+        '.pre-commit-config.yaml',
       ]) {
         const target = join(root, relative);
         mkdirSync(dirname(target), {recursive: true});
         copyFileSync(join(sourceRoot, relative), target);
       }
+      chmodSync(join(root, '.githooks/pre-commit'), 0o755);
       chmodSync(join(root, '.githooks/commit-msg'), 0o755);
     },
   };
@@ -204,18 +231,31 @@ test('fails safely for a missing message file', t => {
 
 test('installs and reinstalls repository-local hook configuration', t => {
   const repo = fixture(t);
+  const preCommitEnv = repo.withFakePreCommit();
   repo.copyHookFiles();
-  const first = repo.install();
+  const first = repo.install(preCommitEnv);
   assert.equal(first.status, 0, first.stderr);
   assert.equal(
     repo.git('config', '--local', '--get', 'core.hooksPath'),
     '.githooks',
   );
-  const second = repo.install();
+  const second = repo.install(preCommitEnv);
   assert.equal(second.status, 0, second.stderr);
   assert.equal(
     repo.git('config', '--local', '--get', 'core.hooksPath'),
     '.githooks',
+  );
+});
+
+test('refuses hook installation without pre-commit and leaves Git config unchanged', t => {
+  const repo = fixture(t);
+  repo.copyHookFiles();
+  const result = repo.install();
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /pre-commit is required/u);
+  assert.equal(
+    repo.run('git', ['config', '--local', '--get', 'core.hooksPath']).status,
+    1,
   );
 });
 
@@ -262,10 +302,14 @@ test('does not duplicate a matching prefix after leading whitespace', t => {
 
 test('Git invokes the installed hook and records one ticket prefix', t => {
   const repo = fixture(t, 'maintenance/CHR-5');
+  const preCommitEnv = repo.withFakePreCommit();
   repo.copyHookFiles();
-  const installed = repo.install();
+  const installed = repo.install(preCommitEnv);
   assert.equal(installed.status, 0, installed.stderr);
-  repo.git(
+  writeFileSync(join(repo.root, 'src.ts'), 'export const value = 1;\n');
+  repo.git('add', 'src.ts');
+  repo.gitWithEnv(
+    preCommitEnv,
     '-c',
     'user.name=Hook Test',
     '-c',
@@ -280,4 +324,5 @@ test('Git invokes the installed hook and records one ticket prefix', t => {
     '[CHR-5] chore: define ticket workflow',
   );
   assert.equal(repo.git('log', '-1', '--format=%b'), '');
+  assert.equal(readFileSync(preCommitEnv.PRECOMMIT_LOG, 'utf8'), 'run\n');
 });

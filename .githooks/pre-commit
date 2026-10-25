@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+
+hook_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+repo_root=$(CDPATH='' cd -- "$hook_dir/.." && pwd)
+local_pre_commit="$repo_root/.venv/bin/pre-commit"
+
+if [ -x "$local_pre_commit" ]; then
+  exec "$local_pre_commit" run
+fi
+
+if command -v pre-commit >/dev/null 2>&1; then
+  exec pre-commit run
+fi
+
+echo 'pre-commit is required; install requirements-dev.txt and run pnpm hooks:install.' >&2
+exit 1
