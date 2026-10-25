@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md` (read it before executing).
 
-Status: approved for implementation by the user on 2026-10-23. Task 1 was reviewed and committed as `d645c1c`. Task 2 was reviewed and committed as `cd62a97`. Task 3 includes the verified user/item foundation and implemented chest catalogue. The user authorized bug review only (Security Review skipped for this step), followed by commit if clear and continuation to Task 4. Task 3 is committed as `7dc32f0`. Task 4 is committed as `6cfd5f3`. Task 5 is implemented and verified, pending unstaged review; Tasks 6–7 have not started.
+Status: approved for implementation by the user on 2026-10-23. Task 1 was reviewed and committed as `d645c1c`. Task 2 was reviewed and committed as `cd62a97`. Task 3 includes the verified user/item foundation and implemented chest catalogue. The user authorized bug review only (Security Review skipped for this step), followed by commit if clear and continuation to Task 4. Task 3 is committed as `7dc32f0`. Task 4 is committed as `6cfd5f3`. Task 5 is committed as `f9de4ac`. Task 6 is in progress; Task 7 has not started.
 
 ## Global Constraints
 
@@ -18,7 +18,7 @@ Status: approved for implementation by the user on 2026-10-23. Task 1 was review
 - Deployment is a separate ticket: no Vercel project linking, cloud deployment, or Neon resource creation in CHR-5.
 - Proposed baseline: Node 24 LTS, pnpm 10, Postgres 17. Verify dependency engine compatibility at implementation time; pin exact selected Node/container and package-manager versions and commit the generated lockfile.
 - Nothing is staged or committed without the user's explicit unstaged-diff review approval.
-- Preserve user edits: the current 50-character limit excludes the ticket prefix.
+- Current session rules: no Conventional Commit category; use a lowercase imperative verb and keep the complete ticket-prefixed subject within 36 characters.
 - Normalize chest/item metadata into `chests`, `items`, and `chest_items`; one initial chest type must not impose a singleton schema. The future opening flow awards exactly one eligible item.
 - Tailwind CSS / @tailwindcss/vite 4.3.3 belongs to Task 2’s existing commit; use utilities for component styling and `@theme` for shared tokens.
 - No development authentication bypass, hard-coded token, or test-only login endpoint is shipped.
@@ -57,8 +57,8 @@ The user waived existing testing gates while the tooling is being established. E
 3. `[CHR-5] feat: add local postgres persistence`
 4. `[CHR-5] feat: add authenticated api`
 5. `[CHR-5] feat: add mobile application shell`
-6. `[CHR-5] test: add authenticated smoke tests`
-7. `[CHR-5] docs: document bootstrap architecture`
+6. `[CHR-5] add e2e smoke tests`
+7. `[CHR-5] document architecture`
 
 Implement in this order. Task 1 installs the hook before the first repository commit, so every planned commit receives its ticket prefix. Before pnpm exists, use the Node hook commands specified there. Do not create empty commits to check off tasks. If implementation or review changes a commit boundary, update this plan and its prepared subject before proceeding. Keep each task's documentation updates with its commit; the final documentation task consolidates the verified whole-project architecture.
 
@@ -234,18 +234,18 @@ expect(deps.ensureUser).not.toHaveBeenCalled();
 - [x] Document and verify an exact dependency refresh command for the chosen volume layout, preserving the database volume. Never require deleting developer data to update dependencies.
 - [x] Run `docker compose config --quiet` and `docker compose up --build -d --wait`; verify UI hot reload and restore the edit, then recreate containers and confirm data remains. Test a failed initializer in an isolated Compose project: API/frontend must not start ready. Rebuild after a manifest change in a scratch copy to verify dependency refresh. Update README with the now-working one-command startup and troubleshooting.
 
-- [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `add mobile app shell`. Verify the resulting subject is exactly `[CHR-5] add mobile app shell` and has no message body. If review is pending, leave the task uncommitted.
+- [x] **Review and commit gate:** the user reviewed the complete unstaged diff and approved staging/commit. Staged only Task 5 files, inspected the staged patch, and committed with input `add mobile app shell`; the resulting subject is `[CHR-5] add mobile app shell` with no body.
 
 
 **Verification evidence:** 101 unit tests and 13 real-Postgres integration tests pass. Client/gate stubs failed ten/six cases before implementation. The configured development account completed real Clerk email-based test sign-in; authenticated account sync/read, reload persistence, Inventory navigation/direct load, sign-out, and 390 × 844 overflow checks passed. Sign-in keyboard focus and source hot reload/restoration were verified. The normal full Compose startup succeeded on host port 5174 (5173 remains its default). A manifest/lock change in a scratch checkout installed a new dependency through the retained dependency volume while preserving the same database UUID/catalogue. Full recreation also retained the actual authenticated user UUID and catalogue; a separate failed initializer blocked API/frontend readiness. Configured backend/test secrets are absent from browser assets and the frontend container environment; `.env` is excluded from its image/mounts.
 
-**Execution decisions:** Clerk’s password helper reached `needs_client_trust`, so verification uses its documented/recommended email-based helper, which creates a real development session using the backend secret. No authentication setting was weakened, and no bypass was shipped. Task 6 should use this supported helper and require the dedicated account email, with password optional for password-specific tests. Browser app `skipLibCheck` is scoped for published Clerk declaration errors; source remains strict. Dependency volumes contain the shared pnpm virtual store, while immutable workspace symlinks live in the rebuilt image; source-only mounts prevent host dependency/secret contamination. Bugbot is not run per the user’s current instruction. Task 5 remains unstaged until explicit user review approval.
+**Execution decisions:** Clerk’s password helper reached `needs_client_trust`, so verification uses its documented/recommended email-based helper, which creates a real development session using the backend secret. No authentication setting was weakened, and no bypass was shipped. Browser app `skipLibCheck` is scoped for published Clerk declaration errors; source remains strict. Dependency volumes contain the shared pnpm virtual store, while immutable workspace symlinks live in the rebuilt image; source-only mounts prevent host dependency/secret contamination. Bugbot is not run per the user’s current instruction.
 
 ## Task 6: Smoke tests and real end-to-end verification
 
-**Planned commit:** `[CHR-5] test: add authenticated smoke tests`
+**Planned commit:** `[CHR-5] add e2e smoke tests`
 
-**Input to Git (hook adds prefix):** `test: add authenticated smoke tests`
+**Input to Git (hook adds prefix):** `add e2e smoke tests`
 
 **Commit boundary:** this task’s listed files, tests, dependency/lockfile changes, and directly related documentation only.
 
@@ -254,22 +254,27 @@ expect(deps.ensureUser).not.toHaveBeenCalled();
 - Consumes: running application backed by isolated Postgres; Clerk development instance/account and testing helpers.
 - Produces: separate signed-out and authenticated Playwright projects, plus root `pnpm test:e2e` running both; no successful exit when authenticated prerequisites are missing.
 
-**Files:** Playwright config, tests/e2e files, env preflight script; root `test:e2e` script, workspace/lockfile updates, isolated test Compose configuration, `.env.example` test settings, and README test setup section.
+**Files:** `playwright.config.ts`, `tests/e2e/`, `scripts/check-e2e-env.mjs`, its unit test, Compose runner and orchestration scripts; `Dockerfile.e2e`, `compose.e2e.yaml`, root scripts/dependencies/lockfile, tooling TypeScript/Vitest configuration, and README/spec/architecture/plan updates.
 
-- [ ] Add a preflight for authenticated smoke tests. Write a unit test asserting absent test-account/Clerk settings cause nonzero exit with required variable names and no secret values. Configure test projects so signed-out tests can run independently without representing full acceptance.
-- [ ] Add a project-based Clerk setup dependency using the installed `@clerk/testing` API. Obtain a real development session through the supported email-based helper and dedicated account (the password helper cannot complete this instance’s client-trust verification); bot-detection testing tokens do not authenticate the user by themselves.
-- [ ] Write signed-out smoke tests for sign-in display, 401 API response, and direct frontend route load.
-- [ ] Write authenticated smoke tests: login → account ready → authenticated POST/GET return the same user → reload retains the same database ID → inventory placeholder loads. Use a mobile Chromium viewport of 390 × 844; assert document width does not exceed viewport width.
-- [ ] Run the new smoke tests before final UI corrections and verify any failures identify missing behavior, not missing scaffolding. Complete only the minimal implementation needed for the specified flow.
-- [ ] Run `pnpm test:e2e` against an isolated Compose project and verify both projects pass with real Clerk development configuration. If credentials/network are unavailable, record the exact blocker and leave authenticated acceptance unverified; never add an auth bypass or skip to force green.
+- [x] Add the authenticated preflight and unit-test absent Clerk/test-user settings: nonzero exit, required variable names, no secret values. Add a signed-out-only mode that omits the dedicated account email without implying full acceptance.
+- [x] Run the preflight test RED before implementing the checker, then GREEN after implementation.
+- [x] Add a Playwright auth-setup project using Clerk's supported email helper and a real development session; use a real Chromium test image with the project's exact Node/pnpm pins.
+- [x] Add signed-out smoke coverage for sign-in, unauthenticated API 401, protected direct route loading, and the 390 × 844 layout.
+- [x] Add authenticated smoke coverage for account readiness, POST/GET identity equality, reload persistence, direct Inventory route loading, and mobile width.
+- [x] Run tests before any UI corrections; the authenticated and signed-out flows passed without product UI changes.
+- [x] Run `pnpm test:e2e` against a uniquely named isolated Compose project. All four signed-out/setup/authenticated tests passed. Run `pnpm test:e2e:signed-out` with `E2E_CLERK_USER_EMAIL` empty; its public-route test passed. Both projects removed only their own database/dependency volumes.
 
-- [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `test: add authenticated smoke tests`. Verify the resulting subject is exactly `[CHR-5] test: add authenticated smoke tests` and has no message body. If review is pending, leave the task uncommitted.
+- [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `add e2e smoke tests`. Verify the resulting subject is exactly `[CHR-5] add e2e smoke tests` and has no message body. If review is pending, leave the task uncommitted.
+
+The Playwright service uses a separate Compose project and project-scoped Postgres volume. Its test runner shares the frontend's network namespace so Chromium can use `http://localhost:5173`; the API allowlist continues to validate that exact local origin. The API and E2E runner receive Clerk's backend key; only the runner receives the dedicated account email, and the frontend receives only the publishable key. Signed-out tests have no Clerk setup dependency; authenticated tests use a separate setup project and stored test session. `Dockerfile.e2e` starts from the pinned Playwright browser image and installs Node 24.20.0 in a private prefix, preserving the workspace engine pin.
+
+**Verification evidence:** frozen pnpm install, zero-warning lint, strict TypeScript typecheck, 103 unit tests, 13 isolated Postgres integration tests, 37 hook tests, and production Vite build all pass. The authenticated Playwright run passes all 4 tests, including a real Clerk sign-in, persisted account ID across reload, inventory loading, and 390 × 844 width. The signed-out-only run passes with the account email explicitly empty. Preflight unit tests pass for missing config and assert that a sentinel secret is never printed. The E2E Docker project removes its uniquely named containers, volumes, and network on success; the existing `chronostasis` development app remains running with its original volumes.
 
 ## Task 7: Verified architecture and operational documentation
 
-**Planned commit:** `[CHR-5] docs: document bootstrap architecture`
+**Planned commit:** `[CHR-5] document architecture`
 
-**Input to Git (hook adds prefix):** `docs: document bootstrap architecture`
+**Input to Git (hook adds prefix):** `document architecture`
 
 **Commit boundary:** the listed documentation files only; no production code or dependency changes.
 
@@ -286,7 +291,7 @@ expect(deps.ensureUser).not.toHaveBeenCalled();
 - [ ] Review all documentation for ticket-induced changes; mark design decisions changed during execution and checkbox states honestly. Record omitted/deferred scope and credentials-dependent verification.
 - [ ] Run `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`, plus clean Compose startup, restart/persistence, and initializer-failure checks. Record exact outcomes. Do not invoke destructive database resets against developer data.
 
-- [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `docs: document bootstrap architecture`. Verify the resulting subject is exactly `[CHR-5] docs: document bootstrap architecture` and has no message body. If review is pending, leave the task uncommitted.
+- [ ] **Review and commit gate:** present this task’s complete unstaged diff, including untracked files, and wait for the user to explicitly confirm review is complete. Do not use `git add -N` without permission. Then stage only this task’s intended changes, inspect the staged diff, and create exactly one commit with subject input `document architecture`. Verify the resulting subject is exactly `[CHR-5] document architecture` and has no message body. If review is pending, leave the task uncommitted.
 
 ## Final ticket acceptance (not an additional commit task)
 

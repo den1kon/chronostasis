@@ -1,0 +1,21 @@
+FROM mcr.microsoft.com/playwright:v1.64.1-noble@sha256:47b510dd9230bf0b9bfc9b20102241e577ea7a99334ab4c3ca19f19770e9b8ea
+
+USER root
+RUN npm install --prefix /opt/node --no-audit --no-fund node@24.20.0 pnpm@10.34.7
+ENV PATH="/opt/node/node_modules/.bin:${PATH}"
+RUN node --version | grep -Fx 'v24.20.0'
+WORKDIR /workspace
+RUN chown pwuser:pwuser /workspace
+USER pwuser
+
+COPY --chown=pwuser:pwuser package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY --chown=pwuser:pwuser apps/web/package.json ./apps/web/package.json
+COPY --chown=pwuser:pwuser packages/contracts/package.json ./packages/contracts/package.json
+COPY --chown=pwuser:pwuser packages/db/package.json ./packages/db/package.json
+COPY --chown=pwuser:pwuser packages/api/package.json ./packages/api/package.json
+COPY --chown=pwuser:pwuser apps/api/package.json ./apps/api/package.json
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+RUN pnpm install --frozen-lockfile
+
+COPY --chown=pwuser:pwuser . .
+CMD ["node", "scripts/run-playwright.mjs"]

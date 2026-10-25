@@ -4,6 +4,7 @@ RUN npm install --global --no-audit --no-fund pnpm@10.34.7
 WORKDIR /workspace
 RUN chown node:node /workspace
 USER node
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY --chown=node:node apps/web/package.json ./apps/web/package.json

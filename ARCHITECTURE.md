@@ -1,6 +1,6 @@
 # Chronostasis architecture
 
-Updated: 2026-10-24.
+Updated: 2026-10-25.
 
 This document separates the current implementation from the intended bootstrap architecture. It was created at the user's request during the Task 3 design update; planned components are not claims of implemented or verified behavior.
 
@@ -9,7 +9,7 @@ This document separates the current implementation from the intended bootstrap a
 - Tasks 1 and 2 are committed on `maintenance/CHR-5`: Git ticket-prefix workflow, pnpm workspace, strict TypeScript/ESLint, React/Vite, and Tailwind CSS.
 - Task 3 is committed as `7dc32f0`. It includes Postgres, Drizzle migrations, idempotent item seeding, user upsert/read operations, contracts, and isolated database tests.
 - The normalized chest catalogue is implemented in Task 3, including an additive migration, transactional catalogue seed, and real-Postgres tests. The authorized independent bug review found one connection URL override defect; it is fixed, regression-tested, and confirmed resolved on follow-up. Security Review was skipped for this step as requested.
-- Task 4 adds Clerk-backed shared handlers, a local HTTP API, Vercel Function adapters, and a health-gated API container. Task 4 is committed as `6cfd5f3`. Task 5 adds the Clerk frontend flow, protected mobile shell, typed client, and full Compose startup with hot reload; these changes await review. The committed Playwright smoke suite remains Task 6. No Vercel/Neon deployment or iOS package exists.
+- Task 4 adds Clerk-backed shared handlers, a local HTTP API, Vercel Function adapters, and a health-gated API container. Task 4 is committed as `6cfd5f3`. Task 5 adds the Clerk frontend flow, protected mobile shell, typed client, and full Compose startup with hot reload; it is committed as `f9de4ac`. Task 6 adds isolated signed-out/authenticated Playwright projects, a Clerk session setup project, and a unique Compose/Postgres test stack.
 
 ## Runtime boundaries
 
@@ -30,7 +30,7 @@ Vercel is the intended frontend/API host, and Neon is the intended hosted Postgr
 - `scripts`: hook installation/processing/tests and a Docker integration-test runner.
 - `docs/superpowers`: design requirements and a task-per-commit implementation plan. Prepared subjects do not bypass unstaged review.
 
-Workspace libraries emit declarations for TypeScript references. Database/API/browser-app projects skip third-party declaration checking because the installed Drizzle/Clerk declarations contain optional-module, React JSX namespace, and exact-optional-property errors. Source remains strictly checked, and contracts/tooling/local-runtime declaration checking stays enabled.
+Workspace libraries emit declarations for TypeScript references. Database/API/browser-app/tooling projects skip third-party declaration checking because the installed Drizzle/Clerk declarations contain optional-module, React JSX namespace, and exact-optional-property errors. Source remains strictly checked, and contracts/local-runtime declaration checking stays enabled.
 
 ## Implemented HTTP and authentication flow
 
@@ -82,7 +82,7 @@ A container-owned `dependencies` volume holds the shared pnpm virtual store. Wor
 
 ## Verification and remaining work
 
-Unit tests cover public contracts, environment validation, isolation/TLS settings, authentication before database access, safe HTTP failures, both adapters, and real Clerk cryptographic verification against an isolated signing fixture. Real Postgres integration tests cover user persistence/concurrency/isolation and migration/item-seed repeatability. Hook tests use temporary repositories. The current bootstrap includes 101 unit tests, 13 real-Postgres integration tests, and 37 hook tests. Container probes cover 200/401/404/405/413 and a safe 503 when the scratch database stops. The configured Clerk keys were checked without displaying values; live browser verification is recorded in the plan separately from the future committed Playwright suite. Lint, type checking, and the production build are also required before commit.
+Unit tests cover public contracts, environment validation, isolation/TLS settings, authentication before database access, safe HTTP failures, both adapters, and real Clerk cryptographic verification against an isolated signing fixture. Real Postgres integration tests cover user persistence/concurrency/isolation and migration/item-seed repeatability. Hook tests use temporary repositories. The current bootstrap includes 101 unit tests, 13 real-Postgres integration tests, and 37 hook tests. Container probes cover 200/401/404/405/413 and a safe 503 when the scratch database stops. The configured Clerk keys were checked without displaying values; live browser verification and the repeatable suite outcome are recorded in the implementation plan. Lint, type checking, and the production build are also required before commit.
 
 The integration runner creates a unique Compose project with its own `chronostasis_test` database and volume, then cleans up only that invocation's resources. Destination validation rejects the development `db` host, remote hosts, other database names, and an application database destination. Tests do not truncate or reset the developer database.
 
@@ -93,8 +93,15 @@ After the complete bootstrap is implemented, reconcile this document with the ac
 
 ## Task 5 verification
 
-A real development Clerk account was signed in with the official email-based test helper. The password helper reached `needs_client_trust`, so it could not complete the instance's additional email verification; no security setting was disabled. The supported helper minted a genuine Clerk session, and the actual API verified its tokens normally. This verification does not claim the interactive email-verification screen was automated.
+A real development Clerk account was signed in with the official email-based test helper. The password helper reached `needs_client_trust`, so it could not complete the instance's additional email verification; no security setting was disabled. The supported helper minted a genuine Clerk session, and the actual API verified its tokens normally. The repeatable Playwright setup uses the same supported email helper; it does not claim to automate the interactive email-verification screen.
 
-At a 390 × 844 CSS viewport, the browser reached account-ready status, confirmed persisted identity across reload, navigated to Inventory, loaded Inventory directly, and signed out. Neither view overflowed horizontally. Keyboard focus reached the sign-in field, and a temporary source edit hot-reloaded and was restored. The full committed smoke suite is still Task 6.
+At a 390 × 844 CSS viewport, the browser reached account-ready status, confirmed persisted identity across reload, navigated to Inventory, loaded Inventory directly, and signed out. Neither view overflowed horizontally. Keyboard focus reached the sign-in field, and a temporary source edit hot-reloaded and was restored. The repeatable suite uses a unique Compose project, dedicated Postgres volume, and a Chromium test container sharing the frontend's localhost network namespace.
 
 Separate scratch Compose projects verified a dependency/lockfile change followed by `down` / `up --build -d --wait` preserved the same database user UUID and catalogue while installing the added dependency. A failed initializer prevented API/frontend startup. Full Compose recreation also retained the actual authenticated user UUID and catalogue. These checks cleaned up only their own volumes. No development database reset was used to refresh dependencies.
+
+
+## Task 6 smoke-test runtime
+
+`pnpm test:e2e` checks required Clerk settings before building or starting containers. Missing values report variable names only; authenticated coverage cannot silently skip. The signed-out-only command requires the Clerk app keys but does not require a test-user email. The authenticated Playwright project depends on a setup project that uses Clerk's supported email-based helper to create a real development session. It verifies API POST/GET identity equality, reload persistence, protected Inventory routing, unauthenticated 401 behavior, and a 390 × 844 layout.
+
+Each run uses a unique Compose project and Postgres volume, initializes and seeds that database, waits for API/web health, and shares the web container network namespace with Chromium to retain the `localhost:5173` origin. Cleanup removes only that invocation's containers and volumes. The API and E2E runner receive the Clerk backend key, only the E2E runner receives the test-account email, and the web container receives only the publishable key. The verified run passes four authenticated/signed-out tests; a separate signed-out-only run passes with the account email empty.

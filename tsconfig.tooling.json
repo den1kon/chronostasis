@@ -2,8 +2,10 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
+    "skipLibCheck": true,
     "lib": [
-      "ES2023"
+      "ES2023",
+      "DOM"
     ],
     "types": [
       "node"
@@ -11,6 +13,9 @@
   },
   "include": [
     "vitest.config.ts",
-    "vitest.integration.config.ts"
+    "vitest.integration.config.ts",
+    "playwright.config.ts",
+    "tests/e2e/**/*.ts",
+    "scripts/**/*.test.ts"
   ]
 }

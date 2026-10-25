@@ -4,7 +4,7 @@ A mobile-first focus application where completed sessions will unlock chests con
 
 ## Bootstrap status
 
-CHR-5 is in progress on `maintenance/CHR-5`. Tasks 1–4 are committed; the authenticated API is commit `6cfd5f3`. Task 5 adds Clerk sign-in/sign-up, protected Focus/Inventory placeholders, account synchronization, and the full Compose application with source hot reload. Task 5 changes remain unstaged for review. The timer, reward selection, and owned inventory are future features. The committed Playwright smoke suite is Task 6; deployment is separate.
+CHR-5 is in progress on `maintenance/CHR-5`. Tasks 1–5 are committed; the authenticated API is `6cfd5f3` and the mobile application shell is `f9de4ac`. Task 6 adds isolated Playwright smoke testing for real Clerk sessions and persisted account identity. The timer, reward selection, and owned inventory are future features. Deployment is separate.
 
 - [Design specification](docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md)
 - [Implementation plan](docs/superpowers/plans/2026-10-23-chr-5-bootstrap.md)
@@ -39,7 +39,7 @@ Vite uses a strict port setting and does not silently choose another port. Resta
 - `packages/api`: server configuration, Clerk token verification, shared Request/Response handlers, and local/Vercel adapters.
 - `packages/contracts`: Zod public-response schemas and their inferred TypeScript types.
 - `packages/db`: server-only Drizzle schema, repository, connection configuration, migrations, seeds, and persistence tests.
-- `scripts`: Git-hook processor/installer/tests and the isolated Docker integration-test runner.
+- `scripts`: Git-hook processor/installer/tests, isolated database integration runner, E2E environment checker, and isolated Playwright Compose orchestration.
 - Root configuration: shared strict TypeScript settings, ESLint, Vitest, workspace/package-manager configuration, and the lockfile.
 - `docs/superpowers`: the CHR-5 design and implementation plan.
 
@@ -173,7 +173,11 @@ For optional host API development, `pnpm dev:api` loads the root `.env` and list
 
 Signed-out visitors are redirected to sign-in. Return destinations are restricted to the supported internal routes. Navigation has keyboard focus styles and a skip link. Timer/chest actions and collection contents are not simulated.
 
-For authenticated browser verification, create a dedicated development user under **Clerk Dashboard → Users**. Put its email in the ignored `.env` variable `E2E_CLERK_USER_EMAIL`. `E2E_CLERK_USER_PASSWORD` is optional for password-specific tests. Clerk’s recommended email-based testing helper creates a real session using the development backend secret; this works when password sign-in requires new-device email verification. Do not use a personal production account. These settings are for the test runner and are never passed into the frontend container. The repeatable root Playwright suite and `pnpm test:e2e` arrive in Task 6; temporary implementation verification does not stand in for that committed acceptance suite.
+For authenticated browser verification, create a dedicated development user under **Clerk Dashboard → Users**. Put its email in the ignored `.env` variable `E2E_CLERK_USER_EMAIL`. `E2E_CLERK_USER_PASSWORD` is optional for password-specific tests. Clerk’s recommended email-based testing helper creates a real session using the development backend secret; this works when password sign-in requires new-device email verification. Do not use a personal production account. These settings are for the test runner and are never passed into the frontend container.
+
+Run the full signed-out and authenticated Chromium acceptance suite with `pnpm test:e2e`. It requires the Clerk publishable key, backend secret, issuer, authorized parties, and dedicated test-user email. It creates a unique Compose project and Postgres volume, waits for the application to become healthy, then removes only that test project’s containers and volumes. It does not reset or connect to the development database. The API and E2E runner receive the backend key; only the runner receives the test-user email, and the frontend receives only the publishable key. The runner shares the frontend network namespace, so the browser origin remains `http://localhost:5173` for Clerk’s authorized-party check; its host port uses a temporary assignment.
+
+To run only signed-out checks without a configured test-user email, use `pnpm test:e2e:signed-out`. Clerk application settings are still required to render the real sign-in component and start the API. This reduced run does not represent full acceptance; `pnpm test:e2e` fails with missing setting names if authenticated configuration is incomplete.
 
 ## Styling
 
@@ -201,11 +205,11 @@ Use a separate branch for each ticket:
 - `bugfix/CHR-1234`
 - `maintenance/CHR-1234`
 
-Supply the Conventional Commit subject without the ticket prefix, for example `feat: add timer`. Git's `commit-msg` hook derives the ticket from the branch and records `[CHR-1234] feat: add timer`.
+Use a lowercase imperative commit subject without a Conventional Commit category, for example `add timer`. Git's `commit-msg` hook derives the ticket from the branch and records `[CHR-1234] add timer`.
 
 The hook preserves a matching existing prefix and rejects conflicting or duplicate leading ticket prefixes, including after indentation. Malformed ticket names under the three reserved branch categories are rejected. Unrelated branches and detached HEAD are left unchanged. Empty/comment-only messages remain empty so Git can abort the commit; user-authored bodies, comments, and line endings are preserved. The hook reads the configured comment character/string and recognizes the scissors marker; automatic comment-character selection falls back to `#`.
 
-The hook does not enforce Conventional Commit syntax or subject length. Follow `AGENTS.md`: the subject excluding the ticket prefix must be at most 50 characters, and agent-created commits must have no body. Staging and committing require explicit confirmation that the user has completed the unstaged review.
+The hook adds the ticket prefix; the commit subject after that prefix must begin with a lowercase imperative verb, use no Conventional Commit category, and keep the complete subject within 36 characters. Agent-created commits have no body. Stage and commit implementation only after the user confirms the unstaged review.
 
 ## Current verification commands
 
@@ -215,12 +219,13 @@ pnpm typecheck
 pnpm test:unit
 pnpm test:integration
 pnpm test:hooks
+pnpm test:e2e
 pnpm build
 ```
 
-Linting uses type-aware strict TypeScript rules, React Hooks rules, browser/server import boundaries, and zero allowed warnings. Type checking uses strict mode, explicit browser types, and additional indexed-access/optional-property checks. The build produces static assets in `apps/web/dist`. Workspace libraries emit declarations into their ignored `dist` folders for TypeScript project references. Source remains strictly checked in every workspace. `skipLibCheck` is scoped to the database, shared API, and browser application projects because Drizzle/Clerk publish declaration errors involving optional drivers/modules, React 19 JSX names, and exact optional properties. Contracts, web tooling, and the local API runtime retain declaration checking. All source still uses strict TypeScript; runtime tests exercise the affected libraries.
+Linting uses type-aware strict TypeScript rules, React Hooks rules, browser/server import boundaries, and zero allowed warnings. Type checking uses strict mode, explicit browser types, and additional indexed-access/optional-property checks. The build produces static assets in `apps/web/dist`. Workspace libraries emit declarations into their ignored `dist` folders for TypeScript project references. Source remains strictly checked in every workspace. `skipLibCheck` is scoped to the database, shared API, browser application, and tooling projects because Drizzle, Clerk, and Clerk's test helpers publish declaration errors involving optional modules and exact optional properties. All project source remains strict; contracts and the local API runtime retain third-party declaration checking.
 
-`pnpm test:unit` runs contract and database-configuration tests without Docker. `pnpm test:integration` covers real persistence, concurrent upserts, user isolation, migrations, and seeds with Docker. Empty test suites fail instead of silently passing. Playwright is added in its later task.
+`pnpm test:unit` runs contract and database-configuration tests without Docker. `pnpm test:integration` covers real persistence, concurrent upserts, user isolation, migrations, and seeds with Docker. Empty test suites fail instead of silently passing. `pnpm test:e2e` runs both signed-out and authenticated mobile smoke tests against an isolated Compose database; `pnpm test:e2e:signed-out` runs only the public-route checks and is not full acceptance.
 
 The hook suite can also run without installing dependencies:
 
@@ -239,4 +244,4 @@ node --check scripts/install-hooks.mjs
 node --check scripts/test-hooks.mjs
 ```
 
-Playwright smoke-test commands will be documented when that tooling is established. `ARCHITECTURE.md` distinguishes the current implementation from planned features and will be finalized after implementation verification.
+The final architecture and operational docs will be reconciled after all planned implementation checks.
