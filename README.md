@@ -42,30 +42,32 @@ docker compose down --volumes
 
 ## Working on the project
 
-Use a ticket branch (`feature/CHR-123`, `bugfix/CHR-123`, or `maintenance/CHR-123`). Enable the commit hook once per checkout with `pnpm hooks:install`; it adds the ticket prefix to commit subjects.
+Use a ticket branch (`feature/CHR-123`, `bugfix/CHR-123`, or `maintenance/CHR-123`). Install the Python hook runner and enable both repository hooks once per checkout:
 
-The main workspaces are `apps/web` (React/Vite), `apps/api` (local Node server), `packages/api` (auth and shared handlers), `packages/contracts` (public schemas), and `packages/db` (Drizzle schema, migrations, and seeds). For schema changes, edit the Drizzle schema, run `pnpm db:generate --name add_focus_session`, then review and commit the generated migration with the schema change. Compose applies migrations and seeds on startup.
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+pnpm hooks:install
+```
+
+The pre-commit hook runs GTS checks on staged files; the commit-message hook adds or validates the ticket prefix. Use `pnpm format:check` to check formatting and `pnpm format:fix` to apply GTS formatting and automatic fixes.
+
+The main workspaces are `apps/web` (React/Vite), `apps/api` (local Node server), `packages/api` (auth and shared handlers), `packages/contracts` (public schemas), and `packages/db` (Drizzle schema, migrations, and seeds). For schema changes, edit the Drizzle schema, run `pnpm db:generate --name add_focus_session`, then review and commit the generated migration with the schema change. Compose applies migrations and seeds on startup. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup, Docker service roles, database workflow, and commands.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for runtime/data boundaries and the [design spec](docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md) for detailed requirements.
 
 ## Before opening a PR to `main`
 
-Use Node.js **24.20.0** and pnpm **10.34.7**. Install from the lockfile, then run the full local acceptance set:
+Use Node.js **24.20.0** and pnpm **10.34.7**. Install from the lockfile, then run the PR gate:
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm lint
-pnpm typecheck
-pnpm test:unit
-pnpm test:integration
-pnpm test:hooks
-pnpm test:e2e
-pnpm build
+pnpm verify:pr
 ```
 
-Lint and typecheck enforce source rules; unit tests cover isolated behavior; integration tests use a disposable PostgreSQL Compose project; hook tests verify ticket-prefix behavior; E2E tests run Chromium against isolated services and require the Clerk development settings plus a dedicated test account in `.env`; build checks the production frontend bundle. The integration and E2E runners remove only their own test resources. Do not substitute `pnpm test:e2e:signed-out` for the full authenticated suite.
+`verify:pr` runs GTS formatting, lint, typecheck, unit tests, PostgreSQL integration tests, hook tests, authenticated Playwright E2E, and the production build, stopping at the first named failure. Integration and E2E need Docker. Authenticated E2E needs Clerk development settings and a dedicated test account in `.env`; see `.env.example`. Do not substitute `pnpm test:e2e:signed-out` for the full suite.
 
-These are the repository's pre-PR checks. No CI workflow is currently checked into this repository, so run them locally before requesting review. Report any unavailable check rather than treating it as passed.
+Run `pnpm format:check` for GTS formatting verification. No CI workflow is checked in, so run the local gate before requesting review. For individual commands and the complete contributor flow, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Local data and credentials
 
