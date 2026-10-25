@@ -24,6 +24,61 @@ describe('database configuration', () => {
       }).migrationDatabaseUrl,
     ).toBe(direct);
   });
+  it('uses Neon pooled and unpooled URLs when local database URLs are absent', () => {
+    const neonPooled =
+      'postgresql://app:private-password@ep-neon-pooler.example/chronostasis';
+    const neonUnpooled =
+      'postgresql://app:private-password@ep-neon.example/chronostasis';
+    expect(
+      readDatabaseEnv({
+        NEON_DATABASE_URL: neonPooled,
+        NEON_DATABASE_URL_UNPOOLED: neonUnpooled,
+      }),
+    ).toEqual({
+      databaseUrl: neonPooled,
+      migrationDatabaseUrl: neonUnpooled,
+    });
+  });
+  it('prefers explicit local database URLs over Neon URLs', () => {
+    const neonPooled =
+      'postgresql://app:private-password@ep-neon-pooler.example/chronostasis';
+    const neonUnpooled =
+      'postgresql://app:private-password@ep-neon.example/chronostasis';
+    const localMigration =
+      'postgresql://app:private-password@localhost:5432/chronostasis';
+    expect(
+      readDatabaseEnv({
+        DATABASE_URL: development,
+        MIGRATION_DATABASE_URL: localMigration,
+        NEON_DATABASE_URL: neonPooled,
+        NEON_DATABASE_URL_UNPOOLED: neonUnpooled,
+      }),
+    ).toEqual({
+      databaseUrl: development,
+      migrationDatabaseUrl: localMigration,
+    });
+  });
+  it('falls back to the Neon pooled URL when no Neon unpooled URL is set', () => {
+    const neonPooled =
+      'postgresql://app:private-password@ep-neon-pooler.example/chronostasis';
+    expect(readDatabaseEnv({NEON_DATABASE_URL: neonPooled})).toEqual({
+      databaseUrl: neonPooled,
+      migrationDatabaseUrl: neonPooled,
+    });
+  });
+  it('keeps migrations on an explicit local database when Neon URLs are also set', () => {
+    const neonUnpooled =
+      'postgresql://app:private-password@ep-neon.example/chronostasis';
+    expect(
+      readDatabaseEnv({
+        DATABASE_URL: development,
+        NEON_DATABASE_URL_UNPOOLED: neonUnpooled,
+      }),
+    ).toEqual({
+      databaseUrl: development,
+      migrationDatabaseUrl: development,
+    });
+  });
   it('treats an empty optional migration setting as absent', () => {
     expect(
       readDatabaseEnv({DATABASE_URL: development, MIGRATION_DATABASE_URL: '  '})
@@ -74,6 +129,14 @@ describe('database configuration', () => {
       readTestDatabaseUrl({
         TEST_DATABASE_URL: isolated,
         DATABASE_URL: isolated,
+      }),
+    ).toThrow('application database');
+  });
+  it('refuses a Neon application database as the integration-test destination', () => {
+    expect(() =>
+      readTestDatabaseUrl({
+        TEST_DATABASE_URL: isolated,
+        NEON_DATABASE_URL: isolated,
       }),
     ).toThrow('application database');
   });

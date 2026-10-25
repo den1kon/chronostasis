@@ -24,10 +24,26 @@ function postgresUrl(value: string | undefined, name: string): string {
   return trimmed;
 }
 
+function firstConfiguredUrl(env: Environment, names: readonly string[]) {
+  for (const name of names) {
+    if (env[name]?.trim()) return {value: env[name], name};
+  }
+  return {value: undefined, name: names.join(' or ')};
+}
+
 export function readDatabaseEnv(env: Environment) {
-  const databaseUrl = postgresUrl(env['DATABASE_URL'], 'DATABASE_URL');
-  const migrationDatabaseUrl = env['MIGRATION_DATABASE_URL']?.trim()
-    ? postgresUrl(env['MIGRATION_DATABASE_URL'], 'MIGRATION_DATABASE_URL')
+  const runtime = firstConfiguredUrl(env, [
+    'DATABASE_URL',
+    'NEON_DATABASE_URL',
+  ]);
+  const databaseUrl = postgresUrl(runtime.value, runtime.name);
+  const migration = env['MIGRATION_DATABASE_URL']?.trim()
+    ? firstConfiguredUrl(env, ['MIGRATION_DATABASE_URL'])
+    : env['DATABASE_URL']?.trim()
+      ? {value: databaseUrl, name: 'DATABASE_URL'}
+      : firstConfiguredUrl(env, ['NEON_DATABASE_URL_UNPOOLED']);
+  const migrationDatabaseUrl = migration.value
+    ? postgresUrl(migration.value, migration.name)
     : databaseUrl;
   return {databaseUrl, migrationDatabaseUrl};
 }
@@ -51,7 +67,12 @@ export function readTestDatabaseUrl(env: Environment): string {
       'TEST_DATABASE_URL must point to an isolated local chronostasis_test database.',
     );
   }
-  for (const name of ['DATABASE_URL', 'MIGRATION_DATABASE_URL'] as const) {
+  for (const name of [
+    'DATABASE_URL',
+    'MIGRATION_DATABASE_URL',
+    'NEON_DATABASE_URL',
+    'NEON_DATABASE_URL_UNPOOLED',
+  ] as const) {
     const applicationUrl = env[name];
     if (
       applicationUrl?.trim() &&
