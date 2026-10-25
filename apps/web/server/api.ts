@@ -1,7 +1,11 @@
-import { createProductionApi, toVercelHandler, type VercelHandler } from '@chronostasis/api';
+import {
+  createProductionApi,
+  toVercelHandler,
+  type VercelHandler,
+} from '@chronostasis/api';
 
 let api: ReturnType<typeof createProductionApi> | undefined;
-const handler: VercelHandler = toVercelHandler(async (request) => {
+const handler: VercelHandler = toVercelHandler(async request => {
   api ??= createProductionApi(process.env);
   return api.handler(request);
 });

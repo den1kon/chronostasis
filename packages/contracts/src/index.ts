@@ -1,13 +1,13 @@
-import { z } from 'zod';
+import {z} from 'zod';
 
 export const PublicUserSchema = z.object({
   id: z.uuid(),
   clerkUserId: z.string().trim().min(1),
 });
-export const UserResponseSchema = z.object({ user: PublicUserSchema });
-export const HealthResponseSchema = z.object({ status: z.literal('ok') });
+export const UserResponseSchema = z.object({user: PublicUserSchema});
+export const HealthResponseSchema = z.object({status: z.literal('ok')});
 export const ApiErrorSchema = z.object({
-  error: z.object({ code: z.string().min(1), message: z.string().min(1) }),
+  error: z.object({code: z.string().min(1), message: z.string().min(1)}),
 });
 
 export type PublicUser = z.infer<typeof PublicUserSchema>;
