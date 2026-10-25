@@ -77,7 +77,7 @@ The root checks are `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:
 - Integration tests use a unique Compose project and isolated `chronostasis_test` database volume for real migrations, user upserts, and catalogue constraints. They clean up only their own resources and do not reset development data.
 - Hook tests use temporary repositories and exercise the ticket-prefix hook without creating test commits in Chronostasis.
 - Playwright tests run signed-out and authenticated browser flows in Chromium at a mobile viewport. The authenticated suite requires a dedicated Clerk development test user and fails with missing setting names rather than silently skipping coverage. Each invocation creates and removes its own Compose project and database/dependency volumes.
-- The verified Task 6 run passed 103 unit tests, 13 PostgreSQL integration tests, 37 hook tests, four authenticated/signed-out browser tests, and one signed-out-only browser test. Lint, strict type checking, and the production build also passed. Exact per-task outcomes are recorded in the implementation plan.
+- The verified Task 8 run passed 104 unit tests, 13 PostgreSQL integration tests, 37 hook tests, and four authenticated/setup/signed-out browser tests. Lint, strict type checking, the production build, and Compose configuration validation also passed. Exact per-task outcomes are recorded in the implementation plan.
 
 ## Hosting boundary
 

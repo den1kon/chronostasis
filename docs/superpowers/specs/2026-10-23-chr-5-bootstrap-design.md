@@ -1,6 +1,6 @@
 # CHR-5: Bootstrap design
 
-Status: approved for implementation on 2026-10-23. Tasks 1–7 are committed through `1ede096`; Task 3 includes normalized user/item/chest persistence, and Task 6 includes isolated signed-out and authenticated Playwright projects. Task 7 finalized operating documentation and `ARCHITECTURE.md`. A full-history Bugbot-style review found no actionable bugs. Security Review identified a host API listener exposure; Task 8 changes host-run development to default to loopback while Compose explicitly binds inside its private network. CHR-5 awaits review of the corrective unstaged diff and explicit completion approval.
+Status: approved for implementation on 2026-10-23. Tasks 1–8 are committed through `ed2ea4b`; Task 3 includes normalized user/item/chest persistence, and Task 6 includes isolated signed-out and authenticated Playwright projects. Task 7 finalized operating documentation and `ARCHITECTURE.md`. Full-history and follow-up Bugbot-style reviews found no actionable bugs. Security Review identified a host API listener exposure; Task 8 changed host-run development to default to loopback while Compose explicitly binds inside its private network, and follow-up review found no remaining exposure by default. Task 9 is updating the human-oriented README and current architecture/plan status; CHR-5 still requires that documentation review/commit and explicit completion approval.
 
 ## Intent
 
