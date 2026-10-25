@@ -47,7 +47,7 @@ Clerk is the only identity provider. The backend verifies session signatures, is
 - `POST /api/me` authenticates and conflict-safely initializes the persisted application user.
 - `GET /api/me` authenticates and reads the persisted application user.
 
-The browser receives only the Clerk publishable key. Clerk's secret key is used by the server and E2E runner, never exposed through a Vite variable or frontend image. There is no authentication bypass or test-only login endpoint.
+The browser receives only the Clerk publishable key. Clerk's secret key is used by the server and E2E runner, never exposed through a Vite variable or frontend image. Locally and in Production, `CLERK_AUTHORIZED_PARTIES` is an explicit allowlist. On Vercel Preview, the API builds the allowlist from the exact deployment and branch origins in `VERCEL_URL` and `VERCEL_BRANCH_URL`; the static variable may be unset in Preview. This allows generated Preview URLs to work without wildcard origins or per-ticket dashboard edits. Vercel system environment variables must be enabled. Use Clerk Development keys for Preview and Production keys for Production. There is no authentication bypass or test-only login endpoint.
 
 ## Data model
 
