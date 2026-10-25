@@ -4,7 +4,7 @@ Updated: 2026-10-25.
 
 ## Scope and deployment status
 
-Chronostasis is currently a local mobile-first application foundation: a React client signs in with Clerk, calls a TypeScript API, and persists an application user and catalogue in PostgreSQL. Focus timing, chest opening, loot selection, and owned inventory are not implemented. Vercel and Neon are intended deployment targets, but no cloud project or deployment is configured by this ticket. PWA packaging and Capacitor/iOS packaging are also future work.
+Chronostasis is a mobile-first application foundation: a React client signs in with Clerk, calls a TypeScript API, and persists an application user and catalogue in PostgreSQL. Focus timing, chest opening, loot selection, and owned inventory are not implemented. The owner has provisioned a Vercel deployment and Neon project; hosted database connectivity and migrations still need verification. PWA packaging and Capacitor/iOS packaging are future work.
 
 ## Workspace
 
@@ -63,7 +63,7 @@ The browser receives only the Clerk publishable key. Clerk's secret key is used 
 
 The seed upserts item and chest definitions and inserts missing eligibility links in one transaction. Additional chest types or links can be added without schema changes. The three item links describe eligible rewards, not chest contents: the future chest-opening flow is intended to award exactly one item. There is no owned-chest, opening-history, reward probability, focus-session, or inventory model yet.
 
-Database pools are bounded. Hosted connections require certificate verification; local Compose connections use the local non-TLS server. Migrations support a separate direct URL, falling back to the application database URL when unset. Compose uses fixed local-only database credentials and destinations so a host environment variable cannot redirect initialization to another database.
+Database pools are bounded. Hosted connections require certificate verification; local Compose connections use the local non-TLS server. Runtime configuration prefers `DATABASE_URL`, then `NEON_DATABASE_URL`; migrations prefer `MIGRATION_DATABASE_URL`, then an explicit `DATABASE_URL`, then `NEON_DATABASE_URL_UNPOOLED`, and finally the selected runtime URL. This lets local Compose keep its internal connection while Vercel uses the Neon integration's prefixed values. Compose uses fixed local-only database credentials and destinations so a host environment variable cannot redirect initialization to another database.
 
 ## Styling and mobile layout
 
@@ -85,4 +85,4 @@ The focused root checks are `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, 
 
 ## Hosting boundary
 
-The intended hosted topology is a static Vite build and Vercel Functions connected to Neon PostgreSQL. `apps/web/api` already contains the Vercel adapters and routing configuration, but this repository has not been linked to a Vercel project, deployed, or connected to a Neon database. Cloud resource setup and deployment belong to a separate ticket. A future PWA or Capacitor shell can reuse the React client and HTTPS API, with its own platform/auth callback work.
+The hosted topology is a static Vite build and Vercel Functions connected to Neon PostgreSQL. `apps/web/api` contains the Vercel adapters and routing configuration. Vercel and Neon are provisioned; the Neon integration uses `NEON_DATABASE_URL` for pooled runtime connections and `NEON_DATABASE_URL_UNPOOLED` for direct migrations. Production migration and catalogue seeding are explicit commands, not part of deployment. Hosted API/database behavior should be verified after initialization. A future PWA or Capacitor shell can reuse the React client and HTTPS API, with its own platform/auth callback work.

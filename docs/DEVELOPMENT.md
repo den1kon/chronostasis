@@ -4,7 +4,7 @@ This guide covers the local workflow for Chronostasis. For service boundaries an
 
 ## Prerequisites and setup
 
-- Node.js 24.20.0 and pnpm 10.34.7 (the repository pins both).
+- Node.js 24.20.0 and pnpm 10.34.7 locally (`.node-version` pins Node; `package.json` accepts Node.js >=24.20.0 and <25 to allow compatible 24.x patch updates on managed hosts such as Vercel).
 - Docker with Compose for PostgreSQL integration tests and browser E2E tests.
 - Python 3.9 or newer for the pinned pre-commit 3.8.0 runner.
 - A Clerk development application. Authenticated browser tests also need the dedicated test user described below.
@@ -62,6 +62,17 @@ pnpm test:integration
 ```
 
 Commit a migration with the schema change. Compose applies pending migrations and seeds when its `db-init` service starts. Integration tests create and remove their own Compose project and database volume; they do not reset the development database.
+
+For Vercel, configure the Neon integration with the `NEON_` prefix and enable preview database branches. The integration supplies `NEON_DATABASE_URL` (pooled runtime connection) and `NEON_DATABASE_URL_UNPOOLED` (direct migration connection). The database environment helper prefers explicit `DATABASE_URL` / `MIGRATION_DATABASE_URL` values and falls back to the Neon variables, so Compose and hosted functions use their respective databases.
+
+After linking the checkout to the Vercel project, apply migrations and seed the production catalogue through the Production environment:
+
+```sh
+vercel env run -e production -- pnpm db:migrate
+vercel env run -e production -- pnpm db:seed
+```
+
+These commands are manual; deployments do not run them automatically. Repeat schema migrations for any Neon preview branch that needs a newer schema.
 
 ## Format, lint, and test
 

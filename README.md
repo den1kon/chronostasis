@@ -1,6 +1,6 @@
 # Chronostasis
 
-Chronostasis is a mobile-first focus app foundation. Clerk sign-in and account persistence work locally; Focus and Inventory are placeholders. Timer, rewards, and deployment are future work.
+Chronostasis is a mobile-first focus app foundation. Clerk sign-in and account persistence work locally; Focus and Inventory are placeholders. Timer and rewards are future work. Vercel and Neon are provisioned; hosted database connectivity still needs configuration and migration.
 
 ## Run locally
 
@@ -58,7 +58,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for runtime/data boundaries and the [desi
 
 ## Before opening a PR to `main`
 
-Use Node.js **24.20.0** and pnpm **10.34.7**. Install from the lockfile, then run the PR gate:
+Use Node.js **24.20.0** and pnpm **10.34.7** locally. The `.node-version` file pins the local runtime; `package.json` accepts Node.js 24.20.0 and newer patch releases in the 24.x line so Vercel's managed Node runtime can update patches. Install from the lockfile, then run the PR gate:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -72,3 +72,16 @@ Run `pnpm format:check` for GTS formatting verification. No CI workflow is check
 ## Local data and credentials
 
 `.env` is ignored by Git. Keep Clerk secrets there; only the publishable key is sent to the browser. Development PostgreSQL credentials are local fixtures. Compose fixes its database destination so host environment variables cannot redirect migrations to another database.
+
+## Vercel and Neon
+
+Configure the Neon integration with the `NEON_` prefix for Production and Preview, and enable a separate database branch for each Preview deployment. The API uses `NEON_DATABASE_URL` (pooled); migrations use `NEON_DATABASE_URL_UNPOOLED` (direct). Local `DATABASE_URL` and `MIGRATION_DATABASE_URL` take precedence, so Docker Compose keeps using its local database.
+
+After linking this checkout to the Vercel project, initialize the production database with the Vercel Production environment:
+
+```sh
+vercel env run -e production -- pnpm db:migrate
+vercel env run -e production -- pnpm db:seed
+```
+
+Environment changes apply to new deployments, so redeploy after changing Vercel settings. See [the development guide](docs/DEVELOPMENT.md) for the database workflow.
