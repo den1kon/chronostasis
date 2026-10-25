@@ -63,7 +63,7 @@ The browser receives only the Clerk publishable key. Clerk's secret key is used 
 
 The seed upserts item and chest definitions and inserts missing eligibility links in one transaction. Additional chest types or links can be added without schema changes. The three item links describe eligible rewards, not chest contents: the future chest-opening flow is intended to award exactly one item. There is no owned-chest, opening-history, reward probability, focus-session, or inventory model yet.
 
-Database pools are bounded. Hosted connections require certificate verification; local Compose connections use the local non-TLS server. Runtime configuration prefers `DATABASE_URL`, then `NEON_DATABASE_URL`; migrations prefer `MIGRATION_DATABASE_URL`, then `NEON_DATABASE_URL_UNPOOLED`, and finally the runtime URL. This lets local Compose keep its internal connection while Vercel uses the Neon integration's prefixed values. Compose uses fixed local-only database credentials and destinations so a host environment variable cannot redirect initialization to another database.
+Database pools are bounded. Hosted connections require certificate verification; local Compose connections use the local non-TLS server. Runtime configuration prefers `DATABASE_URL`, then `NEON_DATABASE_URL`; migrations prefer `MIGRATION_DATABASE_URL`, then an explicit `DATABASE_URL`, then `NEON_DATABASE_URL_UNPOOLED`, and finally the selected runtime URL. This lets local Compose keep its internal connection while Vercel uses the Neon integration's prefixed values. Compose uses fixed local-only database credentials and destinations so a host environment variable cannot redirect initialization to another database.
 
 ## Styling and mobile layout
 
