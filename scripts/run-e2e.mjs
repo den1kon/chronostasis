@@ -1,7 +1,8 @@
-import { existsSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
+import {existsSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
 
-const signedOutOnly = process.argv[2] === '--signed-out' && process.argv.length === 3;
+const signedOutOnly =
+  process.argv[2] === '--signed-out' && process.argv.length === 3;
 if (process.argv.length > 2 && !signedOutOnly) {
   console.error('Usage: pnpm test:e2e [--signed-out]');
   process.exitCode = 2;
@@ -10,7 +11,7 @@ if (process.argv.length > 2 && !signedOutOnly) {
   const preflight = spawnSync(
     process.execPath,
     ['scripts/check-e2e-env.mjs', ...(signedOutOnly ? ['--signed-out'] : [])],
-    { stdio: 'inherit', env: process.env },
+    {stdio: 'inherit', env: process.env},
   );
 
   if (preflight.error || preflight.status !== 0) {
@@ -39,17 +40,24 @@ if (process.argv.length > 2 && !signedOutOnly) {
       const run = spawnSync(
         'docker',
         [...composeArgs, 'up', '--build', '--exit-code-from', 'e2e', 'e2e'],
-        { stdio: 'inherit', env: composeEnvironment },
+        {stdio: 'inherit', env: composeEnvironment},
       );
       testStatus = run.status ?? 1;
-      if (run.error) console.error('Unable to start the isolated E2E Compose project.');
+      if (run.error)
+        console.error('Unable to start the isolated E2E Compose project.');
     } finally {
-      const cleanup = spawnSync('docker', [...composeArgs, 'down', '--volumes', '--remove-orphans'], {
-        stdio: 'inherit',
-        env: composeEnvironment,
-      });
+      const cleanup = spawnSync(
+        'docker',
+        [...composeArgs, 'down', '--volumes', '--remove-orphans'],
+        {
+          stdio: 'inherit',
+          env: composeEnvironment,
+        },
+      );
       if (cleanup.error || cleanup.status !== 0) {
-        console.error('Could not fully remove the isolated E2E Compose project.');
+        console.error(
+          'Could not fully remove the isolated E2E Compose project.',
+        );
         if (testStatus === 0) testStatus = 1;
       }
     }

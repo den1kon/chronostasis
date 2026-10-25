@@ -1,15 +1,17 @@
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {describe, expect, it} from 'vitest';
 
-const checkerPath = fileURLToPath(new URL('./check-e2e-env.mjs', import.meta.url));
+const checkerPath = fileURLToPath(
+  new URL('./check-e2e-env.mjs', import.meta.url),
+);
 
 describe('authenticated E2E environment preflight', () => {
   it('fails with missing setting names and never prints secret values', () => {
     const secretSentinel = 'do-not-print-this-secret-value';
     const result = spawnSync(process.execPath, [checkerPath], {
       encoding: 'utf8',
-      env: { PATH: process.env['PATH'], CLERK_SECRET_KEY: secretSentinel },
+      env: {PATH: process.env['PATH'], CLERK_SECRET_KEY: secretSentinel},
     });
 
     expect(result.status).not.toBe(0);

@@ -44,12 +44,18 @@
 - Run `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`,
   `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`
   before proposing a ticket as complete.
+- GTS is authoritative for JavaScript/TypeScript formatting and general lint
+  rules. Run `pnpm format:check` and use `pnpm format:fix` for autofixes.
+- `pnpm verify:all` runs GTS formatting and the complete local check set in
+  sequence; report the named failure and any checks that could not run.
 - `pnpm test:integration` and `pnpm test:e2e` require Docker. The authenticated
   E2E suite also requires the Clerk development settings and dedicated test
   account described in README.md. `pnpm test:e2e:signed-out` is a reduced
   public-route check and is not full acceptance.
 - Install the repository hook with `pnpm hooks:install`; run its focused suite
   with `pnpm test:hooks` or `node scripts/test-hooks.mjs`.
+- Install the pinned pre-commit runner from `requirements-dev.txt` in `.venv`
+  before enabling the staged-file hook.
 - Before proposing a ticket as complete, run the full configured lint,
   type-check, unit-test, Playwright-test, and production-build commands.
 - All required checks must pass. Report missing, skipped, or unavailable checks;
