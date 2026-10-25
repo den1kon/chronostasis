@@ -37,6 +37,35 @@ function fixture() {
 }
 
 describe('full verification runner', () => {
+  it('runs the web build via Corepack without requiring pnpm on PATH', () => {
+    const {bin, logPath} = fixture();
+    const packageJson: unknown = JSON.parse(
+      readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+    );
+    if (
+      typeof packageJson !== 'object' ||
+      packageJson === null ||
+      !('scripts' in packageJson) ||
+      typeof packageJson.scripts !== 'object' ||
+      packageJson.scripts === null ||
+      !('build' in packageJson.scripts) ||
+      typeof packageJson.scripts.build !== 'string'
+    ) {
+      throw new Error('package.json must define a build script.');
+    }
+
+    const result = spawnSync('/bin/sh', ['-c', packageJson.scripts.build], {
+      cwd: fileURLToPath(new URL('..', import.meta.url)),
+      encoding: 'utf8',
+      env: {PATH: bin, VERIFY_LOG: logPath},
+    });
+
+    expect(result.status).toBe(0);
+    expect(readFileSync(logPath, 'utf8').trim()).toBe(
+      '--filter @chronostasis/web build',
+    );
+  });
+
   it('runs every required check serially and reports success only at the end', () => {
     const {bin, logPath} = fixture();
     const result = spawnSync(process.execPath, [runnerPath], {
