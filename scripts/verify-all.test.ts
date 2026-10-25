@@ -12,7 +12,7 @@ import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {afterEach, describe, expect, it} from 'vitest';
 
-const runnerPath = fileURLToPath(new URL('./verify-pr.mjs', import.meta.url));
+const runnerPath = fileURLToPath(new URL('./verify-all.mjs', import.meta.url));
 const temporaryDirectories: string[] = [];
 
 afterEach(() => {
@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 function fixture() {
-  const root = mkdtempSync(join(tmpdir(), 'chronostasis verify-pr '));
+  const root = mkdtempSync(join(tmpdir(), 'chronostasis verify-all '));
   temporaryDirectories.push(root);
   const bin = join(root, 'bin');
   mkdirSync(bin);
@@ -36,7 +36,7 @@ function fixture() {
   return {root, bin, logPath};
 }
 
-describe('pre-PR verification runner', () => {
+describe('full verification runner', () => {
   it('runs every required check serially and reports success only at the end', () => {
     const {bin, logPath} = fixture();
     const result = spawnSync(process.execPath, [runnerPath], {
@@ -45,7 +45,7 @@ describe('pre-PR verification runner', () => {
     });
 
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain('[verify:pr] All PR checks passed.');
+    expect(result.stdout).toContain('[verify:all] All checks passed.');
     expect(readFileSync(logPath, 'utf8').trim().split('\n')).toEqual([
       'format:check',
       'lint',
@@ -67,9 +67,9 @@ describe('pre-PR verification runner', () => {
 
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain(
-      '[verify:pr] FAILED: database integration tests (corepack pnpm test:integration exited 17)',
+      '[verify:all] FAILED: database integration tests (corepack pnpm test:integration exited 17)',
     );
-    expect(result.stdout).not.toContain('[verify:pr] All PR checks passed.');
+    expect(result.stdout).not.toContain('[verify:all] All checks passed.');
     expect(readFileSync(logPath, 'utf8').trim().split('\n')).toEqual([
       'format:check',
       'lint',
@@ -88,7 +88,7 @@ describe('pre-PR verification runner', () => {
 
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain(
-      '[verify:pr] FAILED: GTS formatting (unable to start corepack pnpm format:check:',
+      '[verify:all] FAILED: GTS formatting (unable to start corepack pnpm format:check:',
     );
   });
 });

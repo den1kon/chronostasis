@@ -46,7 +46,7 @@
   before proposing a ticket as complete.
 - GTS is authoritative for JavaScript/TypeScript formatting and general lint
   rules. Run `pnpm format:check` and use `pnpm format:fix` for autofixes.
-- `pnpm verify:pr` runs GTS formatting and the complete pre-PR check set in
+- `pnpm verify:all` runs GTS formatting and the complete local check set in
   sequence; report the named failure and any checks that could not run.
 - `pnpm test:integration` and `pnpm test:e2e` require Docker. The authenticated
   E2E suite also requires the Clerk development settings and dedicated test

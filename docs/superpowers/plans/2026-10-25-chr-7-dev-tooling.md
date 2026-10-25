@@ -19,7 +19,7 @@ Status: implementation is in place. Formatting, lint, typecheck, unit, integrati
 Files: root `package.json`, `pnpm-lock.yaml`, ESLint/formatter configuration, and existing tracked source files that need the initial formatting pass.
 
 1. Inspect GTS's supported configuration/API and pinned dependencies. Confirm the selected release works with ESLint 10, TypeScript 6, Node 24, and the flat config. The full GTS config is included; its TypeScript parser/plugin references are unified with the workspace's parser instance to avoid an ESLint plugin collision. Do not run `gts init` if it would overwrite workspace settings.
-2. Add root scripts with distinct non-mutating GTS check and explicit autofix actions. Keep `pnpm lint` as the no-fix ESLint command and retain `pnpm typecheck` unchanged. Include GTS formatting in `pnpm verify:pr`.
+2. Add root scripts with distinct non-mutating GTS check and explicit autofix actions. Keep `pnpm lint` as the no-fix ESLint command and retain `pnpm typecheck` unchanged. Include GTS formatting in `pnpm verify:all`.
 3. Compose GTS rules with the existing TypeScript, React Hooks, and import-boundary rules. Ensure a lint/fix run never turns off type checking or permits browser imports of server-only code.
 4. Apply the formatter once to its intended tracked files. Review the entire formatting diff for accidental changes outside formatting.
 
@@ -50,14 +50,14 @@ Verification:
 - `pre-commit run --all-files` passes on the formatted tree; a staged-file smoke check confirms the pre-commit hook scopes to staged supported files.
 - `git diff --check` passes.
 
-## Task 3: Add the pre-PR verification runner
+## Task 3: Add the full local verification runner
 
-**Commit subject:** `[CHR-7] add PR verification`
-**Commit-hook input:** `add PR verification`
+**Commit subject:** `[CHR-7] add full verifier`
+**Commit-hook input:** `add full verifier`
 
-Files: `scripts/verify-pr.mjs`, root `package.json`, focused script tests and their test configuration.
+Files: `scripts/verify-all.mjs`, root `package.json`, focused script tests and their test configuration.
 
-1. Add `pnpm verify:pr` to call a Node runner that executes this ordered list serially: `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`.
+1. Add `pnpm verify:all` to call a Node runner that executes this ordered list serially: `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`.
 2. Before each process, print a stable label and exact command. Inherit child stdout/stderr. Stop on the first nonzero exit, signal termination, or spawn error; print the failed label/command and return nonzero. Print overall success only if all eight checks succeed. Do not echo environment values.
 3. Add focused tests by substituting a fake Corepack executable through a temporary `PATH`. Assert exact order and successful summary; assert first failing stage is named and later stages do not run; assert a spawn error is also named and exits unsuccessfully.
 4. Keep installation (`pnpm install --frozen-lockfile`) separate from the verifier and explain this distinction in Task 4.
@@ -65,7 +65,7 @@ Files: `scripts/verify-pr.mjs`, root `package.json`, focused script tests and th
 Verification:
 
 - Focused verifier tests pass without requiring Docker or Clerk credentials.
-- `pnpm verify:pr` passes in a complete local environment; if Docker or Clerk setup is missing, preserve the named failing step and actionable underlying diagnostics.
+- `pnpm verify:all` passes in a complete local environment; if Docker or Clerk setup is missing, preserve the named failing step and actionable underlying diagnostics.
 - Independently run each constituent command when diagnosing a verifier failure; the verifier itself must use the same commands.
 
 ## Task 4: Document the contributor and database workflow
@@ -76,7 +76,7 @@ Verification:
 Files: `docs/DEVELOPMENT.md` (new), `README.md`, `ARCHITECTURE.md`, and any directly related project docs identified during the documentation review.
 
 1. Write a task-oriented development guide: prerequisites and environment, project/workspace map, Docker Compose service roles and startup flow, API request path, database persistence/isolated test data, Drizzle schema-to-migration-to-seed process, local verification commands, GTS format/lint/fix commands, hook install, and ticket branch-to-review workflow.
-2. Keep README concise: link to the development guide and show the short local start and `pnpm verify:pr` path. Preserve Clerk setup requirements and existing explanations needed to start the app.
+2. Keep README concise: link to the development guide and show the short local start and `pnpm verify:all` path. Preserve Clerk setup requirements and existing explanations needed to start the app.
 3. Update `ARCHITECTURE.md` only for implemented tool/hook boundaries and contributor verification flow. Do not imply Jenkins exists.
 4. Review all documentation under the repository for stale setup/check guidance and update directly affected docs. Use relative links that work from each document.
 
@@ -93,12 +93,12 @@ Run the full gate on Node 24.20.0/pnpm 10.34.7 after implementation:
 ```sh
 pnpm install --frozen-lockfile
 pnpm format:check
-pnpm verify:pr
+pnpm verify:all
 pnpm test:hooks
 pre-commit run --all-files
 ```
 
-`pnpm verify:pr` covers GTS formatting, lint, typecheck, unit, integration, hooks, authenticated E2E, and build. The focused hook suite and pre-commit all-files run are repeated explicitly because this ticket changes tooling and hook behavior. Report every unavailable/skipped check. Ask permission for Bugbot and Security Review only after local verification, resolve findings, run affected checks and follow-up reviews, then present the complete unstaged diff for user review. Do not stage or commit until the user explicitly confirms the diff review; separate explicit approval is required to mark CHR-7 complete.
+`pnpm verify:all` covers GTS formatting, lint, typecheck, unit, integration, hooks, authenticated E2E, and build. The focused hook suite and pre-commit all-files run are repeated explicitly because this ticket changes tooling and hook behavior. Report every unavailable/skipped check. Ask permission for Bugbot and Security Review only after local verification, resolve findings, run affected checks and follow-up reviews, then present the complete unstaged diff for user review. Do not stage or commit until the user explicitly confirms the diff review; separate explicit approval is required to mark CHR-7 complete.
 
 ## Plan self-review
 

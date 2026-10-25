@@ -77,13 +77,13 @@ pnpm format:fix
 The full PR gate is:
 
 ```sh
-pnpm verify:pr
+pnpm verify:all
 ```
 
 It runs GTS formatting, lint, typecheck, unit tests, PostgreSQL integration tests, hook tests, authenticated Playwright E2E, and the production build in order. It stops at the first failure and names the check. Integration and E2E need Docker. Authenticated E2E also requires Clerk development settings and a dedicated test account in `.env`; see `.env.example` for the required variable names. `pnpm test:e2e:signed-out` checks only public routes and does not replace the authenticated suite.
 
-The underlying focused commands are `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`. Run `pnpm format:check` as well when changing JavaScript or TypeScript. There is no Jenkins pipeline yet; a future pipeline can invoke `pnpm verify:pr`.
+The underlying focused commands are `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`. Run `pnpm format:check` as well when changing JavaScript or TypeScript. There is no Jenkins pipeline yet; a future pipeline can invoke `pnpm verify:all`.
 
 ## Typical contribution flow
 
-Create the ticket branch (`feature/CHR-123`, `bugfix/CHR-123`, or `maintenance/CHR-123`), install dependencies and hooks, make a focused change with its tests and docs, run `pnpm format:fix` when needed, then run `pnpm verify:pr`. Review the resulting diff before staging and commit with the ticket-prefixed subject. Open a PR to `main` only after the local gate passes.
+Create the ticket branch (`feature/CHR-123`, `bugfix/CHR-123`, or `maintenance/CHR-123`), install dependencies and hooks, make a focused change with its tests and docs, run `pnpm format:fix` when needed, then run `pnpm verify:all`. Review the resulting diff before staging and commit with the ticket-prefixed subject. Open a PR to `main` only after the local gate passes.

@@ -62,10 +62,10 @@ Use Node.js **24.20.0** and pnpm **10.34.7**. Install from the lockfile, then ru
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm verify:pr
+pnpm verify:all
 ```
 
-`verify:pr` runs GTS formatting, lint, typecheck, unit tests, PostgreSQL integration tests, hook tests, authenticated Playwright E2E, and the production build, stopping at the first named failure. Integration and E2E need Docker. Authenticated E2E needs Clerk development settings and a dedicated test account in `.env`; see `.env.example`. Do not substitute `pnpm test:e2e:signed-out` for the full suite.
+`verify:all` runs GTS formatting, lint, typecheck, unit tests, PostgreSQL integration tests, hook tests, authenticated Playwright E2E, and the production build, stopping at the first named failure. Integration and E2E need Docker. Authenticated E2E needs Clerk development settings and a dedicated test account in `.env`; see `.env.example`. Do not substitute `pnpm test:e2e:signed-out` for the full suite.
 
 Run `pnpm format:check` for GTS formatting verification. No CI workflow is checked in, so run the local gate before requesting review. For individual commands and the complete contributor flow, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 

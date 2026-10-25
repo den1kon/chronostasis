@@ -16,7 +16,7 @@ The pnpm monorepo uses TypeScript, React, Vite, Tailwind CSS, Vercel Functions a
 - `packages/contracts` defines browser-safe Zod response schemas and inferred types.
 - `packages/db` owns the Drizzle schema, migrations, PostgreSQL pool, repository operations, and transactional catalogue seed.
 - `tests/e2e` contains signed-out and authenticated Playwright browser tests.
-- `scripts` contains the pre-PR verification runner, Git hook tooling, and isolated database/Playwright test runners.
+- `scripts` contains the full local verification runner, Git hook tooling, and isolated database/Playwright test runners.
 
 Workspace libraries emit declarations for TypeScript project references. Type-aware ESLint and strict source type checking run across the workspace. `skipLibCheck` is limited to database, API, browser, and tooling projects to work around errors in installed Drizzle/Clerk declarations; contracts and the local runtime retain declaration checking.
 
@@ -73,9 +73,9 @@ The web workspace registers the official Tailwind CSS Vite plugin. Components us
 
 GTS is authoritative for JavaScript and TypeScript formatting and general lint rules. `pnpm format:check` verifies formatting and `pnpm format:fix` applies GTS fixes. The ESLint flat config layers the full GTS config with the workspace's strict type-aware TypeScript rules, React Hooks rules, and browser/server import restrictions. `pnpm lint` is a non-fixing lint check; `pnpm typecheck` remains the separate TypeScript project check.
 
-The staged-file pre-commit hook delegates to GTS through the repository's `.githooks` path; `commit-msg` continues to add or validate the ticket prefix. `pnpm verify:pr` is the local, serial pre-PR gate for GTS formatting, lint, typecheck, unit tests, PostgreSQL integration tests, hook tests, authenticated Playwright E2E, and production build. Jenkins is not configured; a later pipeline can call this same command.
+The staged-file pre-commit hook delegates to GTS through the repository's `.githooks` path; `commit-msg` continues to add or validate the ticket prefix. `pnpm verify:all` is the local, serial gate for GTS formatting, lint, typecheck, unit tests, PostgreSQL integration tests, hook tests, authenticated Playwright E2E, and production build. Jenkins is not configured; a later pipeline can call this same command.
 
-The focused root checks are `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`. `pnpm verify:pr` runs the full set including GTS formatting.
+The focused root checks are `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`. `pnpm verify:all` runs the full set including GTS formatting.
 
 - Unit tests cover contracts, server configuration, authentication, request/response behavior, adapter parity, and frontend API/account states.
 - Integration tests use a unique Compose project and isolated `chronostasis_test` database volume for real migrations, user upserts, and catalogue constraints. They clean up only their own resources and do not reset development data.

@@ -13,11 +13,11 @@ const checks = [
   ['production build', 'build'],
 ];
 
-console.log(`[verify:pr] Running ${checks.length} checks in order.`);
+console.log(`[verify:all] Running ${checks.length} checks in order.`);
 
 for (const [label, script] of checks) {
   const command = `corepack pnpm ${script}`;
-  console.log(`\n[verify:pr] Running ${label}: ${command}`);
+  console.log(`\n[verify:all] Running ${label}: ${command}`);
   const result = spawnSync('corepack', ['pnpm', script], {
     cwd: repositoryRoot,
     stdio: 'inherit',
@@ -25,7 +25,7 @@ for (const [label, script] of checks) {
 
   if (result.error) {
     console.error(
-      `[verify:pr] FAILED: ${label} (unable to start ${command}: ${result.error.message})`,
+      `[verify:all] FAILED: ${label} (unable to start ${command}: ${result.error.message})`,
     );
     process.exitCode = 1;
     break;
@@ -33,7 +33,7 @@ for (const [label, script] of checks) {
 
   if (result.signal) {
     console.error(
-      `[verify:pr] FAILED: ${label} (${command} terminated by ${result.signal})`,
+      `[verify:all] FAILED: ${label} (${command} terminated by ${result.signal})`,
     );
     process.exitCode = 1;
     break;
@@ -41,15 +41,15 @@ for (const [label, script] of checks) {
 
   if (result.status !== 0) {
     console.error(
-      `[verify:pr] FAILED: ${label} (${command} exited ${result.status ?? 1})`,
+      `[verify:all] FAILED: ${label} (${command} exited ${result.status ?? 1})`,
     );
     process.exitCode = result.status ?? 1;
     break;
   }
 
-  console.log(`[verify:pr] Passed: ${label}`);
+  console.log(`[verify:all] Passed: ${label}`);
 }
 
 if (process.exitCode === undefined) {
-  console.log('\n[verify:pr] All PR checks passed.');
+  console.log('\n[verify:all] All checks passed.');
 }

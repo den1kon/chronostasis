@@ -8,11 +8,11 @@ Status: implementation in progress. This design and its plan guide CHR-7; they d
 - **Labels:** `improvement` and new topical label `tooling`
 - **Description:**
 
-  Standardize TypeScript formatting and lint fixes with Google TypeScript Style (GTS), add fast staged-file checks while preserving the existing ticket-prefix commit hook, and provide one local pre-PR verification command that reports the failing check clearly. Document the local development workflow, including Docker Compose services and the PostgreSQL/Drizzle workflow, so a contributor can set up, change, and verify the project without relying on tribal knowledge. Keep the verification command reusable as a later Jenkins pipeline step.
+  Standardize TypeScript formatting and lint fixes with Google TypeScript Style (GTS), add fast staged-file checks while preserving the existing ticket-prefix commit hook, and provide one local full verification command that reports the failing check clearly. Document the local development workflow, including Docker Compose services and the PostgreSQL/Drizzle workflow, so a contributor can set up, change, and verify the project without relying on tribal knowledge. Keep the verification command reusable as a later Jenkins pipeline step.
 
 ## Intent
 
-Make the repository easier to contribute to and safer to change by giving developers one documented style/fix workflow, a quick commit-time guard, a clear local pre-PR gate, and an accurate guide to the codebase and its database. The existing full check suite should remain runnable locally before Jenkins is introduced.
+Make the repository easier to contribute to and safer to change by giving developers one documented style/fix workflow, a quick commit-time guard, a clear local full-check gate, and an accurate guide to the codebase and its database. The existing full check suite should remain runnable locally before Jenkins is introduced.
 
 ## Current state
 
@@ -29,8 +29,8 @@ Make the repository easier to contribute to and safer to change by giving develo
 2. Keep strict type checks, React-specific rules, and browser/server import boundaries as additional project safeguards alongside GTS.
 3. Run only fast, relevant formatting/lint checks on staged files before a commit. Keep integration, E2E, and production build out of the commit hook.
 4. Preserve ticket-prefix processing in `.githooks/commit-msg`; hook setup must enable both commit-time checks and commit-message processing without replacing the custom `core.hooksPath`.
-5. Add `pnpm verify:pr`, which serially runs the complete local acceptance set, prints the name and command of each check, stops at the first failure while preserving its diagnostics, and exits nonzero. A successful run is the local signal that the contributor may request review.
-6. Write a practical development guide for setup, code layout, Docker services, environment, database changes, tests, formatting, hooks, and pre-PR verification. Keep README concise and architecture accurate.
+5. Add `pnpm verify:all`, which serially runs the complete local acceptance set, prints the name and command of each check, stops at the first failure while preserving its diagnostics, and exits nonzero. A successful run is the local signal that the contributor may request review.
+6. Write a practical development guide for setup, code layout, Docker services, environment, database changes, tests, formatting, hooks, and the full local verification command. Keep README concise and architecture accurate.
 7. Keep the gate runnable without Jenkins so Jenkins can later invoke the same command rather than duplicate the check list.
 
 ## Non-goals
@@ -60,11 +60,11 @@ Commit-time checks should be limited to staged TypeScript/JavaScript and support
 
 ### Pre-PR verification command
 
-Add a root command `pnpm verify:pr` backed by a small Node script. It runs, serially and in the repository root, `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`. Before each child process it prints a stable step label and command; it inherits output so tool diagnostics remain visible. It stops on the first nonzero result, identifies the failed step, and exits nonzero. It exits zero and reports success only after all steps pass. Do not include dependency installation in this script; contributors install using `pnpm install --frozen-lockfile` first. Keep checks serial so Docker-heavy test runners do not compete for resources and output order is reproducible.
+Add a root command `pnpm verify:all` backed by a small Node script. It runs, serially and in the repository root, `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:integration`, `pnpm test:hooks`, `pnpm test:e2e`, and `pnpm build`. Before each child process it prints a stable step label and command; it inherits output so tool diagnostics remain visible. It stops on the first nonzero result, identifies the failed step, and exits nonzero. It exits zero and reports success only after all steps pass. Do not include dependency installation in this script; contributors install using `pnpm install --frozen-lockfile` first. Keep checks serial so Docker-heavy test runners do not compete for resources and output order is reproducible.
 
 ### Development documentation
 
-Add `docs/DEVELOPMENT.md` as the detailed contributor guide, then link to it from README. Explain current behavior, not planned product functionality. Cover Node/pnpm setup, Clerk environment prerequisites, Compose start/stop and service roles, API request path, persistent and isolated test databases, schema/migration/seed workflow, test commands and prerequisites, hook installation, formatting/lint/fix, `verify:pr`, and a normal ticket-to-review work loop. Update `ARCHITECTURE.md` for implemented tooling/runtime boundaries only; do not describe future Jenkins as present.
+Add `docs/DEVELOPMENT.md` as the detailed contributor guide, then link to it from README. Explain current behavior, not planned product functionality. Cover Node/pnpm setup, Clerk environment prerequisites, Compose start/stop and service roles, API request path, persistent and isolated test databases, schema/migration/seed workflow, test commands and prerequisites, hook installation, formatting/lint/fix, `verify:all`, and a normal ticket-to-review work loop. Update `ARCHITECTURE.md` for implemented tooling/runtime boundaries only; do not describe future Jenkins as present.
 
 ## Constraints and open implementation decisions
 
@@ -82,14 +82,14 @@ Add `docs/DEVELOPMENT.md` as the detailed contributor guide, then link to it fro
 - [x] Repository source is formatted consistently; the formatting diff was reviewed for unrelated behavior edits.
 - [x] pre-commit runs only fast relevant checks for staged files; setup cooperates with `core.hooksPath=.githooks` and preserves `commit-msg` ticket-prefix behavior.
 - [x] Hook installation is repeatable and its focused tests cover both hook entrypoints and failure/configuration cases.
-- [x] `pnpm verify:pr` runs GTS formatting plus all seven acceptance commands serially, labels each, stops with a clear failing command and nonzero exit, and reports success only when every command passes.
+- [x] `pnpm verify:all` runs GTS formatting plus all seven acceptance commands serially, labels each, stops with a clear failing command and nonzero exit, and reports success only when every command passes.
 - [x] The verifier has focused tests for success, a named command failure, and process-spawn failure.
 - [x] `docs/DEVELOPMENT.md`, README, and `ARCHITECTURE.md` accurately describe setup, Docker, DB, commands, hooks, and the contributor workflow.
 - [ ] The full configured lint, type-check, unit, integration, hook, authenticated E2E, and build commands pass; report any unavailable checks rather than claiming success.
 - [ ] Bugbot and Security Review are completed after implementation and local verification; findings are resolved or explicitly ignored by the user.
 - [ ] The user explicitly approves ticket completion after reviewing the unstaged changes and verification/review evidence.
 
-Current local evidence: GTS formatting, ESLint, typecheck, 108 unit tests, 13 PostgreSQL integration tests, 38 hook tests, pre-commit validation/all-files checks, and the production build passed. `pnpm verify:pr` stopped at authenticated E2E because this checkout has no Clerk settings or dedicated `E2E_CLERK_USER_EMAIL`; therefore full ticket acceptance remains pending.
+Current local evidence: GTS formatting, ESLint, typecheck, 108 unit tests, 13 PostgreSQL integration tests, 38 hook tests, pre-commit validation/all-files checks, and the production build passed. `pnpm verify:all` stopped at authenticated E2E because this checkout has no Clerk settings or dedicated `E2E_CLERK_USER_EMAIL`; therefore full ticket acceptance remains pending.
 
 ## Suggested ticket label
 
