@@ -63,7 +63,7 @@ pnpm test:integration
 
 Commit a migration with the schema change. Compose applies pending migrations and seeds when its `db-init` service starts. Integration tests create and remove their own Compose project and database volume; they do not reset the development database.
 
-For Vercel, configure the Neon integration with the `NEON_` prefix and enable preview database branches. The integration supplies `NEON_DATABASE_URL` (pooled runtime connection) and `NEON_DATABASE_URL_UNPOOLED` (direct migration connection). The database environment helper prefers explicit `DATABASE_URL` / `MIGRATION_DATABASE_URL` values and falls back to the Neon variables, so Compose and hosted functions use their respective databases.
+For Vercel, configure the Neon integration with the `NEON_` prefix and enable preview database branches. It supplies `NEON_POSTGRES_URL` (pooled runtime connection) and `NEON_POSTGRES_URL_NON_POOLING` (direct migration connection). The database environment helper prefers explicit `DATABASE_URL` / `MIGRATION_DATABASE_URL` values and falls back to those Neon variables. It also accepts `NEON_DATABASE_URL` / `NEON_DATABASE_URL_UNPOOLED` for compatibility, so Compose and hosted functions use their respective databases.
 
 After linking the checkout to the Vercel project, apply migrations and seed the production catalogue through the Production environment:
 

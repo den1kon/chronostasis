@@ -75,7 +75,7 @@ Run `pnpm format:check` for GTS formatting verification. No CI workflow is check
 
 ## Vercel and Neon
 
-Configure the Neon integration with the `NEON_` prefix for Production and Preview, and enable a separate database branch for each Preview deployment. The API uses `NEON_DATABASE_URL` (pooled); migrations use `NEON_DATABASE_URL_UNPOOLED` (direct). Local `DATABASE_URL` and `MIGRATION_DATABASE_URL` take precedence, so Docker Compose keeps using its local database.
+Configure the Neon integration with the `NEON_` prefix for Production and Preview, and enable a separate database branch for each Preview deployment. The integration provides `NEON_POSTGRES_URL` (pooled runtime connection) and `NEON_POSTGRES_URL_NON_POOLING` (direct migration connection); the database package also accepts the `NEON_DATABASE_URL` and `NEON_DATABASE_URL_UNPOOLED` names. Local `DATABASE_URL` and `MIGRATION_DATABASE_URL` take precedence, so Docker Compose keeps using its local database.
 
 After linking this checkout to the Vercel project, initialize the production database with the Vercel Production environment:
 

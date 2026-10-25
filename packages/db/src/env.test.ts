@@ -39,6 +39,18 @@ describe('database configuration', () => {
       migrationDatabaseUrl: neonUnpooled,
     });
   });
+  it('uses the prefixed Neon integration URLs when local database URLs are absent', () => {
+    const neonPooled =
+      'postgresql://app:private-password@ep-neon-pooler.example/chronostasis';
+    const neonDirect =
+      'postgresql://app:private-password@ep-neon.example/chronostasis';
+    expect(
+      readDatabaseEnv({
+        NEON_POSTGRES_URL: neonPooled,
+        NEON_POSTGRES_URL_NON_POOLING: neonDirect,
+      }),
+    ).toEqual({databaseUrl: neonPooled, migrationDatabaseUrl: neonDirect});
+  });
   it('prefers explicit local database URLs over Neon URLs', () => {
     const neonPooled =
       'postgresql://app:private-password@ep-neon-pooler.example/chronostasis';
@@ -137,6 +149,14 @@ describe('database configuration', () => {
       readTestDatabaseUrl({
         TEST_DATABASE_URL: isolated,
         NEON_DATABASE_URL: isolated,
+      }),
+    ).toThrow('application database');
+  });
+  it('refuses the prefixed Neon integration database as the test destination', () => {
+    expect(() =>
+      readTestDatabaseUrl({
+        TEST_DATABASE_URL: isolated,
+        NEON_POSTGRES_URL: isolated,
       }),
     ).toThrow('application database');
   });

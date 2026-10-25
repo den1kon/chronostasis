@@ -35,13 +35,17 @@ export function readDatabaseEnv(env: Environment) {
   const runtime = firstConfiguredUrl(env, [
     'DATABASE_URL',
     'NEON_DATABASE_URL',
+    'NEON_POSTGRES_URL',
   ]);
   const databaseUrl = postgresUrl(runtime.value, runtime.name);
   const migration = env['MIGRATION_DATABASE_URL']?.trim()
     ? firstConfiguredUrl(env, ['MIGRATION_DATABASE_URL'])
     : env['DATABASE_URL']?.trim()
       ? {value: databaseUrl, name: 'DATABASE_URL'}
-      : firstConfiguredUrl(env, ['NEON_DATABASE_URL_UNPOOLED']);
+      : firstConfiguredUrl(env, [
+          'NEON_DATABASE_URL_UNPOOLED',
+          'NEON_POSTGRES_URL_NON_POOLING',
+        ]);
   const migrationDatabaseUrl = migration.value
     ? postgresUrl(migration.value, migration.name)
     : databaseUrl;
@@ -72,6 +76,8 @@ export function readTestDatabaseUrl(env: Environment): string {
     'MIGRATION_DATABASE_URL',
     'NEON_DATABASE_URL',
     'NEON_DATABASE_URL_UNPOOLED',
+    'NEON_POSTGRES_URL',
+    'NEON_POSTGRES_URL_NON_POOLING',
   ] as const) {
     const applicationUrl = env[name];
     if (
