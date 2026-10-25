@@ -44,7 +44,7 @@ try {
   process.on('SIGTERM', stop);
 } catch {
   console.error(
-    'API startup failed. Check DATABASE_URL, CLERK_SECRET_KEY, CLERK_ISSUER, CLERK_AUTHORIZED_PARTIES, and API_PORT.',
+    'API startup failed. Check database and Clerk settings, API_PORT, and Vercel system environment variables for Preview deployments.',
   );
   process.exitCode = 1;
 }

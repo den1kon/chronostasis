@@ -30,6 +30,10 @@ function origin(value: string, name: string, httpsOnly = false): string {
     throw new Error(`${name} must contain valid origins.`);
   }
 }
+function vercelOrigin(env: Environment, name: string): string | undefined {
+  const hostname = env[name]?.trim();
+  return hostname ? origin(`https://${hostname}`, name, true) : undefined;
+}
 export function readApiEnv(env: Environment): ApiEnv {
   const clerkSecretKey = required(env, 'CLERK_SECRET_KEY');
   const clerkIssuer = origin(
@@ -37,13 +41,32 @@ export function readApiEnv(env: Environment): ApiEnv {
     'CLERK_ISSUER',
     true,
   );
-  const authorizedParties = [
-    ...new Set(
-      required(env, 'CLERK_AUTHORIZED_PARTIES')
-        .split(',')
-        .map(value => origin(value.trim(), 'CLERK_AUTHORIZED_PARTIES')),
-    ),
-  ];
+  const isVercelPreview = env['VERCEL_ENV'] === 'preview';
+  const configuredParties = env['CLERK_AUTHORIZED_PARTIES']?.trim();
+  if (!configuredParties && !isVercelPreview)
+    throw new Error('CLERK_AUTHORIZED_PARTIES is required.');
+  const authorizedParties = configuredParties
+    ? [
+        ...new Set(
+          configuredParties
+            .split(',')
+            .map(value => origin(value.trim(), 'CLERK_AUTHORIZED_PARTIES')),
+        ),
+      ]
+    : [];
+  if (isVercelPreview) {
+    const previewOrigins = [
+      vercelOrigin(env, 'VERCEL_URL'),
+      vercelOrigin(env, 'VERCEL_BRANCH_URL'),
+    ].filter((value): value is string => value !== undefined);
+    if (previewOrigins.length === 0)
+      throw new Error(
+        'VERCEL_URL or VERCEL_BRANCH_URL is required in Preview.',
+      );
+    authorizedParties.push(
+      ...previewOrigins.filter(value => !authorizedParties.includes(value)),
+    );
+  }
   const host = env['API_HOST']?.trim() ?? '127.0.0.1';
   if (!host) throw new Error('API_HOST must not be empty.');
   const port = Number(env['API_PORT'] ?? '3001');

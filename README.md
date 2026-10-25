@@ -77,6 +77,10 @@ Run `pnpm format:check` for GTS formatting verification. No CI workflow is check
 
 Configure the Neon integration with the `NEON_` prefix for Production and Preview, and enable a separate database branch for each Preview deployment. The integration provides `NEON_POSTGRES_URL` (pooled runtime connection) and `NEON_POSTGRES_URL_NON_POOLING` (direct migration connection); the database package also accepts the `NEON_DATABASE_URL` and `NEON_DATABASE_URL_UNPOOLED` names. Local `DATABASE_URL` and `MIGRATION_DATABASE_URL` take precedence, so Docker Compose keeps using its local database.
 
+Use Clerk development keys for Vercel Preview and production keys for Production. Keep `CLERK_AUTHORIZED_PARTIES` set to explicit origins locally and in Production. Remove its Preview environment value: the API builds Preview's allowlist from the exact Vercel deployment and branch URLs, so every ticket branch works without per-PR settings changes. Enable Vercel system environment variables for the project. A Clerk Development account can be used locally and on Preview; Production users remain separate.
+
+Vercel's build runs the serverless API typecheck before the Vite build. The app-level TypeScript config repeats the compiler settings needed by Vercel, which does not follow TypeScript project references.
+
 After linking this checkout to the Vercel project, initialize the production database with the Vercel Production environment:
 
 ```sh

@@ -65,6 +65,10 @@ Commit a migration with the schema change. Compose applies pending migrations an
 
 For Vercel, configure the Neon integration with the `NEON_` prefix and enable preview database branches. It supplies `NEON_POSTGRES_URL` (pooled runtime connection) and `NEON_POSTGRES_URL_NON_POOLING` (direct migration connection). The database environment helper prefers explicit `DATABASE_URL` / `MIGRATION_DATABASE_URL` values and falls back to those Neon variables. It also accepts `NEON_DATABASE_URL` / `NEON_DATABASE_URL_UNPOOLED` for compatibility, so Compose and hosted functions use their respective databases.
 
+Use Clerk development keys in Vercel's Preview environment and production keys in Production. Keep `CLERK_AUTHORIZED_PARTIES` explicit locally and in Production; remove its Preview environment value. The API builds Preview's allowlist from the exact deployment and branch origins supplied by Vercel's `VERCEL_URL` and `VERCEL_BRANCH_URL`, so each ticket branch can use its generated URL without manually editing environment variables. Enable Vercel system environment variables in the project settings. Use a Clerk Development account for both local and Preview testing; it is separate from Production users.
+
+Vercel runs `pnpm typecheck` in `apps/web` before building the Vite frontend. This checks the serverless function entrypoints with Node's ESM resolution rules; the web app TypeScript config repeats shared compiler settings because Vercel does not follow TypeScript project references. The root `pnpm typecheck` includes this function check as well.
+
 After linking the checkout to the Vercel project, apply migrations and seed the production catalogue through the Production environment:
 
 ```sh

@@ -19,6 +19,55 @@ describe('server configuration', () => {
   it('allows Compose to opt into its internal network interface', () => {
     expect(readApiEnv({...valid, API_HOST: '0.0.0.0'}).host).toBe('0.0.0.0');
   });
+  it('allows the current Vercel deployment and branch URLs in Preview', () => {
+    expect(
+      readApiEnv({
+        ...valid,
+        VERCEL_ENV: 'preview',
+        VERCEL_URL: 'chronostasis-abc123-denikon.vercel.app',
+        VERCEL_BRANCH_URL: 'chronostasis-git-bugfix-chr-11-denikon.vercel.app',
+      }).authorizedParties,
+    ).toEqual([
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'https://chronostasis-abc123-denikon.vercel.app',
+      'https://chronostasis-git-bugfix-chr-11-denikon.vercel.app',
+    ]);
+  });
+  it('uses only Vercel URLs when Preview has no static origin list', () => {
+    expect(
+      readApiEnv({
+        ...valid,
+        CLERK_AUTHORIZED_PARTIES: undefined,
+        VERCEL_ENV: 'preview',
+        VERCEL_URL: 'chronostasis-abc123-denikon.vercel.app',
+      }).authorizedParties,
+    ).toEqual(['https://chronostasis-abc123-denikon.vercel.app']);
+  });
+  it('does not add Vercel URLs outside Preview', () => {
+    expect(
+      readApiEnv({
+        ...valid,
+        VERCEL_ENV: 'production',
+        VERCEL_URL: 'chronostasis-abc123-denikon.vercel.app',
+        VERCEL_BRANCH_URL: 'chronostasis-git-main-denikon.vercel.app',
+      }).authorizedParties,
+    ).toEqual(['http://localhost:5173', 'http://localhost:5174']);
+  });
+  it('requires Vercel system URLs in Preview', () => {
+    expect(() => readApiEnv({...valid, VERCEL_ENV: 'preview'})).toThrow(
+      'VERCEL_URL or VERCEL_BRANCH_URL',
+    );
+  });
+  it('rejects malformed Vercel Preview URLs', () => {
+    expect(() =>
+      readApiEnv({
+        ...valid,
+        VERCEL_ENV: 'preview',
+        VERCEL_URL: 'preview.example.com/path',
+      }),
+    ).toThrow('VERCEL_URL');
+  });
   it.each(['CLERK_SECRET_KEY', 'CLERK_ISSUER', 'CLERK_AUTHORIZED_PARTIES'])(
     'names missing %s without disclosing other settings',
     name => {

@@ -37,7 +37,7 @@ flowchart LR
 
 The frontend obtains Clerk bearer tokens and calls `POST /api/me` to idempotently create the current application user, then `GET /api/me` to confirm the persisted identity. “Account ready” requires both responses to refer to the same user. Requests are scoped to the active user/session and cancelled when the relevant component unmounts.
 
-The local Node adapter and Vercel Functions entrypoints convert requests to the same Web `Request`/`Response` handlers. Both preserve request method, headers, and raw body bytes, enforce a 64 KiB body limit, and return the same safe JSON error contract. The Vercel adapters are implemented but hosted invocation has not been verified.
+The local Node adapter and Vercel Functions entrypoints convert requests to the same Web `Request`/`Response` handlers. Both preserve request method, headers, and raw body bytes, enforce a 64 KiB body limit, and return the same safe JSON error contract. Vercel runs a dedicated typecheck for its function entrypoints before the Vite build. Its app-level `tsconfig.json` repeats the shared compiler options because Vercel does not follow TypeScript project references. Hosted invocation has not been verified.
 
 ## Authentication and API
 
@@ -47,7 +47,7 @@ Clerk is the only identity provider. The backend verifies session signatures, is
 - `POST /api/me` authenticates and conflict-safely initializes the persisted application user.
 - `GET /api/me` authenticates and reads the persisted application user.
 
-The browser receives only the Clerk publishable key. Clerk's secret key is used by the server and E2E runner, never exposed through a Vite variable or frontend image. There is no authentication bypass or test-only login endpoint.
+The browser receives only the Clerk publishable key. Clerk's secret key is used by the server and E2E runner, never exposed through a Vite variable or frontend image. Locally and in Production, `CLERK_AUTHORIZED_PARTIES` is an explicit allowlist. On Vercel Preview, the API builds the allowlist from the exact deployment and branch origins in `VERCEL_URL` and `VERCEL_BRANCH_URL`; the static variable may be unset in Preview. This allows generated Preview URLs to work without wildcard origins or per-ticket dashboard edits. Vercel system environment variables must be enabled. Use Clerk Development keys for Preview and Production keys for Production. There is no authentication bypass or test-only login endpoint.
 
 ## Data model
 
