@@ -23,7 +23,7 @@
     "db:generate": "pnpm --filter @chronostasis/db db:generate",
     "db:migrate": "pnpm --filter @chronostasis/db db:migrate",
     "db:seed": "pnpm --filter @chronostasis/db db:seed",
-    "db:prepare": "pnpm --filter @chronostasis/db db:prepare",
+    "db:prepare": "corepack pnpm --filter @chronostasis/db db:prepare",
     "deploy:build": "node scripts/deploy-build.mjs",
     "test:integration": "node scripts/test-integration.mjs",
     "verify:all": "node scripts/verify-all.mjs",

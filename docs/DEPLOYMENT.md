@@ -1,6 +1,6 @@
 # Vercel and Neon deployment
 
-The repository implements this workflow; dashboard configuration and hosted acceptance are still pending. `chronostasis.tech` is already attached to Vercel Production according to the owner. Clerk domain setup and authenticated hosted persistence have not been verified.
+The repository implements this workflow. Dashboard setup was inspected and updated on 2026-10-26: persistent Neon targets, database hostname guards, separate Clerk environment entries, and Clerk DNS/certificates are configured. Vercel redirects `chronostasis.tech` to the canonical application origin `https://www.chronostasis.tech`. Secret contents, deployment-specific database targeting, and authenticated hosted persistence remain unverified.
 
 ## Environment flow
 
@@ -37,15 +37,17 @@ Integration and Production are separate Neon branches. Application code and comm
 
 1. Keep the existing Production branch. Create or select one persistent Integration branch with a read-write compute and no expiration. Choose sanitized or schema-only starting data where available; a normal child branch inherits its parent's data. Do not copy personal Production data into a shared testing environment without an appropriate sanitization process.
 2. Set Integration as the Neon project's default branch. In Neon → Integrations → Vercel settings, explicitly select Production as the **Production branch**. The Production selection is independent of the default branch.
-3. In Vercel's Neon project connection, enable Preview and Production environments, keep prefix `NEON`, and leave both Preview and Production unchecked under **Create database branch for deployment**. This project uses persistent databases instead of automatic database creation for every deployment.
+3. In Vercel's Neon project connection, enable **Production only**, keep prefix `NEON`, and leave automatic database branching unchecked. Configure Preview explicitly with Secret variables `NEON_DATABASE_URL` (pooled) and `NEON_DATABASE_URL_UNPOOLED` (direct) from the persistent Neon `integration` branch. The owner enters and saves these credentials in Vercel; do not store them in repository files. This project uses persistent databases instead of automatic database creation for every deployment.
 4. Verify a new Preview receives Integration credentials and a new Production deployment receives Production credentials. Inspect the actual deployment configuration; project-level entries alone do not prove which credentials a deployment uses.
 5. Record each branch ID, its direct endpoint hostname, region, and access owner in the evidence table below. Check compute/branch limits and region placement before rollout.
 
 Neon's [integration documentation](https://neon.com/docs/guides/vercel-managed-integration) describes the branch selectors and optional automatic branching. Changing settings does not retarget existing deployments; use new deployments and confirm their targets.
 
+The first CHR-12 Preview failed the Integration hostname guard with the managed connection enabled for Preview. The saved Integration guard was subsequently confirmed correct. Changing the Neon default branch did not establish the required Preview target. With owner approval, the managed connection was changed to Production only, and a Preview-only Secret form was prepared for the explicit Integration pair. The owner saved both Preview-only Secret URLs; their presence and scopes were confirmed. The retry reached Ready and passed hostname validation; the browser health endpoint returned `{"status":"ok"}` with `cache-control: no-store`; authenticated persistence remains pending. Keep the hostname guard unchanged; the endpoint injected into the failed deployment was not exposed.
+
 ### Vercel project and variables
 
-Confirm the connected repository is `den1kon/chronostasis`, Production tracks `main`, and Root Directory is `apps/web`. Enable access to workspace files outside that directory. Disable skipping unaffected projects for this project so migration and shared-package commits reach the runner. Use Node 24, pnpm `10.34.7`, and a frozen-lockfile install. Keep system environment variables exposed, including `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_COMMIT_REF`, `VERCEL_URL`, and `VERCEL_BRANCH_URL`.
+Confirm the connected repository is `den1kon/chronostasis`, Production tracks `main`, and Root Directory is `apps/web`. Enable access to workspace files outside that directory. Keep skipping unaffected projects enabled, subject to the migration-only deployment check below. If that check fails, investigate dependency detection and disable skipping as a fallback. Use Node 24, pnpm `10.34.7`, and a frozen-lockfile install. Keep system environment variables exposed, including `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_COMMIT_REF`, `VERCEL_URL`, and `VERCEL_BRANCH_URL`.
 
 Let committed `apps/web/vercel.json` supply the build and ignore commands; remove conflicting dashboard overrides. Its commands resolve the repository scripts from `apps/web`. The hosted build checks function entrypoints before the regular app build, then prepares the selected database only when permitted.
 
@@ -62,7 +64,7 @@ The two host markers have the same values across Preview and Production. They ar
 
 The runner checks that each runtime/direct pair resolves to the same endpoint, port, and database name, and that the migration connection is direct. Every Preview must match Integration's marker; Production must match Production's marker. These checks catch configuration mistakes; contributors whose code executes with Preview secrets must still be trusted.
 
-Keep the persistent `integration` Git branch available. A push to it creates an automatically canceled Preview build through `ignoreCommand`. Its selected commit can then be redeployed explicitly. Vercel documents the [Ignored Build Step redeploy bypass](https://vercel.com/docs/project-configuration/project-settings#ignore-build-step-on-redeploy). Confirm the actual dashboard sequence during hosted acceptance.
+The persistent `integration` Git branch was created and pushed at `8436c71eb92bc8680daa89d2231189aa6af6fb16` on 2026-10-26. Keep it available. A push to it creates an automatically canceled Preview build through `ignoreCommand`. Its selected commit can then be redeployed explicitly. Vercel documents the [Ignored Build Step redeploy bypass](https://vercel.com/docs/project-configuration/project-settings#ignore-build-step-on-redeploy). Confirm the actual dashboard sequence during hosted acceptance.
 
 ### Clerk and the Production domain
 
@@ -70,7 +72,9 @@ For Local and Preview, use a matching Clerk development publishable key, secret 
 
 In Clerk Production, configure the application domain `chronostasis.tech`, add the requested DNS records, and complete domain/certificate verification. Check production OAuth credentials and redirects for enabled providers. Vercel's domain attachment does not complete these Clerk steps. Follow Clerk's [Production deployment guide](https://clerk.com/docs/guides/development/deployment/production).
 
-Set Production `CLERK_AUTHORIZED_PARTIES` to `https://chronostasis.tech`; add other exact origins only if those aliases are intentionally supported. Use comma-separated origins without paths or wildcards. Leave this variable unset in Preview: the API derives exact allowed origins from `VERCEL_URL` and `VERCEL_BRANCH_URL`. Local development keeps its explicit localhost origin. Development and Production identities are separate; signing in to Clerk does not itself create an application database row.
+Set Production `CLERK_AUTHORIZED_PARTIES` to `https://www.chronostasis.tech`, matching the existing bare-domain redirect; add other exact origins only if those aliases are intentionally supported. Use comma-separated origins without paths or wildcards. Leave this variable unset in Preview: the API derives exact allowed origins from `VERCEL_URL` and `VERCEL_BRANCH_URL`. Local development keeps its explicit localhost origin. Development and Production identities are separate; signing in to Clerk does not itself create an application database row.
+
+Vercel Preview includes both ticket branches and the Git `integration` branch. Both use Neon `integration` and Clerk Development; Production uses Git `main`, Neon `main`, and Clerk Production. Clerk has no separate instance named Integration. Publishable keys are public Config values in Vercel; secret keys remain Secret values. The configured issuers are `https://elegant-aardvark-1949.clerk.accounts.dev` for Preview and `https://clerk.chronostasis.tech` for Production. The owner entered the Preview secret; only its presence and scope were verified. The Production secret still requires owner verification, followed by authenticated deployment checks for both environments.
 
 The default `.vercel.app` Preview suffix is sufficient. Vercel's Preview Deployment Suffix setting is separate from attaching `chronostasis.tech` to Production; this workflow does not require a custom Preview suffix.
 
@@ -88,7 +92,7 @@ Allow reviewers to open Preview URLs under the chosen Deployment Protection poli
 4. After review, update the `integration` Git branch to contain the selected changes. In Vercel Deployments, find the latest entry for **branch `integration`**, including the canceled build, and confirm its commit SHA. Do not select an older successful deployment merely because it is ready.
 5. Choose **Redeploy**, retain the Preview environment/Integration branch configuration, and uncheck **Use project's Ignore Build Step**. Confirm the SHA again. The build validates configuration, typechecks, builds, then prepares Integration. If the expected commit entry or bypass is unavailable, stop and resolve dashboard configuration before running a different deployment.
 6. Verify the shared schema/catalogue and the feature Preview's authenticated behavior. Repeat preparation if needed; migrations use their journal and catalogue upserts remain repeatable. Existing users and additional catalogue definitions are preserved.
-7. Merge the approved ticket into `main` through the normal release process. A fresh Production deployment validates and prepares Production independently. Verify health and account persistence on `chronostasis.tech`. Do not promote a Preview artifact carrying Preview database/auth configuration into Production.
+7. Merge the approved ticket into `main` through the normal release process. A fresh Production deployment validates and prepares Production independently. Verify health and account persistence on `https://www.chronostasis.tech` and the bare-domain redirect. Do not promote a Preview artifact carrying Preview database/auth configuration into Production.
 
 Database preparation waits up to 60 seconds for a session advisory lock on one direct connection, then migrates and seeds. The lock serializes preparation jobs, not application publication. Old code can serve traffic during a migration; destructive schema changes require an expand/contract sequence across releases. Never edit an applied migration, reset a hosted database, or run independent migration commands alongside deployment preparation. Recover with a reviewed forward migration. An application rollback does not undo database changes, and packaging can fail after preparation has already succeeded. Redeploying old seed code can restore old catalogue names; put removals and one-time transformations in versioned migrations.
 
@@ -115,21 +119,24 @@ Review Vercel deployment retention separately from database lifecycle. Integrati
 
 Local verification passed after review fixes on 2026-10-26 following a frozen-lockfile install with Node 24.20.0 and pnpm 10.34.7. `pnpm verify:all` passed formatting, lint, typecheck, 172 unit tests, 21 Docker database integration tests, 38 hook tests, four authenticated/setup/signed-out Playwright tests, and the production build.
 
-All hosted rows below are **pending**, not evidence of successful deployment. Fill them from real deployment and dashboard observations; do not include credentials.
+Dashboard observations below were recorded on 2026-10-26. They do not prove successful deployment or runtime configuration. Deployment acceptance remains pending; record real deployment observations without credentials.
 
 | Evidence | Status / identifiers |
 | --- | --- |
-| Owner verified Vercel root/build/system variables and branch settings | Pending |
-| Neon Integration branch ID/direct hostname/default selection | Pending |
-| Neon Production branch ID/direct hostname/Production selection | Pending |
-| Automatic database branches disabled; both target markers verified | Pending |
-| Clerk Production domain/DNS, matching keys/issuer, exact origins | Pending |
-| Actual contributor feature Preview: deployment ID/SHA; no preparation; Integration target | Pending |
+| Vercel root/build/system variables and branch settings | Observed: `apps/web`, outside-root files enabled, Vite, `dist`, Node 24.x, system variables enabled, Production tracks `main`, Preview tracks other branches. Build/install overrides off; frozen install and committed build/ignore commands still need deployment-log confirmation. Unaffected-project skipping remains enabled pending the migration-only check. |
+| Neon Integration branch ID/direct hostname/default selection | Observed default `integration`: `br-divine-waterfall-b9e8ngi1`; `ep-broad-feather-b9k7ebxk.c-7.eu-central-1.aws.neon.tech`; AWS Frankfurt. Owner: Denys Kondratiuk. |
+| Neon Production branch ID/direct hostname/Production selection | Observed explicit Production selection `main`: `br-plain-sound-b9u11l17`; `ep-divine-night-b9x3wt2m.c-7.eu-central-1.aws.neon.tech`; AWS Frankfurt. Owner: Denys Kondratiuk. |
+| Automatic database branches disabled; both target markers verified | Automatic branching off, prefix `NEON`; managed connection changed to Production only after failed Preview targeting. Both markers saved as Config in both environments; Integration marker value rechecked against Neon after the failure. Owner saved the explicit Preview URL pair; both Secret entries and Preview-only scopes confirmed. Preview retry passed the Integration hostname guard; Production target and authenticated runtime queries remain pending. |
+| Clerk Production domain/DNS, matching keys/issuer, exact origins | All five DNS records Verified; Frontend API and Account portal certificates Issued. Separate public keys/issuers saved for Preview and Production; Production origin saved as `https://www.chronostasis.tech`. Preview secret present and scoped only to Preview after owner entry. Production secret present, owner verification pending. Secret validity, OAuth setup, and authenticated runtime checks remain pending. |
+| Owner ticket Preview: deployment ID/SHA; no preparation; Integration target | Ready: `AMFWvzgekiyDShKQL7MsFAjT4kQg`, commit `8436c71eb92bc8680daa89d2231189aa6af6fb16`; `https://chronostasis-6k5nx22dv-denikon.vercel.app`. Hostname validation passed; logs show function typecheck and application build, no database preparation stage. Signed-out browser loaded Clerk sign-in in Development mode; `/api/health` returned `{"status":"ok"}` with `cache-control: no-store`. Actual collaborator deployment and authenticated persistence remain pending. |
+| First owner CHR-12 Preview attempt | Failed: `DTynKq74EbuF3cp9eHdE4QW97SoU`, commit `8436c71eb92bc8680daa89d2231189aa6af6fb16`, branch `maintenance/CHR-12`. Log: `Configured Neon database does not match the integration target marker.` Validation stopped before typecheck, application build, or database preparation. Build/ignore scripts were invoked and pnpm 10.34.7 detected; actual injected endpoint and correction remain pending. |
+| Migration-only commit with unaffected-project skipping enabled: automatic feature Preview created; deployment ID/SHA and changed migration path; no preparation or database changes | Pending |
 | Integration canceled build → explicit redeploy: selected SHA/deployment ID; preparation log | Pending |
+| First explicit Integration preparation attempt | Canceled entry `DM5DYsnMdYxdP5XBJ1zwjCNnyr6R` at `8436c71`; explicit Preview redeploy `AW5wh8RqGQxEozvHsQgoLDne3GLG` with ignore step unchecked. Target validation, typecheck, and app build succeeded. Preparation failed before migration execution: nested pnpm 10.28.0 violated required 10.34.7. Root `db:prepare` Corepack fix is unstaged; successful migration/seed acceptance remains pending. |
 | Disposable additive migration/catalogue change applied to Integration only; retry stable | Pending |
-| Health 200 and authenticated UI `POST`/`GET /api/me`; user row in exact Integration branch | Pending |
+| Health and authenticated UI `POST`/`GET /api/me`; user row in exact Integration branch | Health returned `{"status":"ok"}`. After owner sign-up, CHR-12 branch alias showed `Your session needs to be refreshed. Please sign in again.` before and after reload. Authenticated persistence is failing; diagnose instance keys/issuer and allowed origins after the deployment tooling fix. No successful user-row evidence recorded. |
 | Approved `main` release: deployment ID/SHA; Production migration/catalogue and existing users preserved | Pending |
-| Production health and authenticated account persistence on `chronostasis.tech` | Pending |
+| Production health and authenticated account persistence on `www.chronostasis.tech`; bare-domain redirect | Pending |
 | Failed Integration preparation on a disposable change fails deployment; Production unchanged | Pending |
 | Full local gate | Passed 2026-10-26; results above |
 | Permitted bug and security reviews, findings resolved, completion approval | Independent agent reviews and follow-ups completed; three findings fixed. Dedicated Bugbot/Security Review agent types were unavailable. Completion approval pending. |
