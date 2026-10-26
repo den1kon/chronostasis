@@ -1,6 +1,6 @@
 # CHR-12: automatic database preparation for deployments
 
-Status: Tasks 1–3 are committed as `5a134a3`, `58049bb`, and `8436c71`. Subsequent rollout documentation updates remain unstaged. The full local gate passed after fixes on 2026-10-26. Permitted independent bug/security reviewer agents completed follow-up reviews with no remaining actionable findings; dedicated Bugbot/Security Review agent types were unavailable. Dashboard setup is recorded in the deployment runbook; Production secret verification and hosted runtime acceptance remain pending. The canonical application origin is `https://www.chronostasis.tech`, with a redirect from the bare domain; Clerk's authentication domain remains `clerk.chronostasis.tech`.
+Status: Tasks 1–3 are committed as `5a134a3`, `58049bb`, and `8436c71`. The approved Corepack preparation fix and rollout documentation were committed as `6bf3379` and pushed to the ticket and Integration branches. The full local gate passed after fixes on 2026-10-26. Permitted independent bug/security reviewer agents completed follow-up reviews with no remaining actionable findings; dedicated Bugbot/Security Review agent types were unavailable. Dashboard setup is recorded in the deployment runbook; Production secret verification and hosted runtime acceptance remain pending. The canonical application origin is `https://www.chronostasis.tech`, with a redirect from the bare domain; Clerk's authentication domain remains `clerk.chronostasis.tech`.
 
 ## Intent
 

@@ -10,7 +10,7 @@
 
 **Spec:** [CHR-12 design](../specs/2026-10-25-chr-12-deployment-workflow-design.md).
 
-**Status:** Tasks 1–3 are committed as `5a134a3`, `58049bb`, and `8436c71`. Subsequent rollout documentation updates remain unstaged for user review. The full local gate passed after fixes on 2026-10-26. Both permitted independent reviewer agents completed follow-up reviews with no remaining actionable findings; dedicated Bugbot/Security Review agent types were unavailable. Vercel/Neon settings, Clerk DNS/certificates, and separate Clerk environment entries were configured through the dashboards. Production secret verification and hosted deployment acceptance remain pending; see the runbook's evidence table.
+**Status:** Tasks 1–3 are committed as `5a134a3`, `58049bb`, and `8436c71`. The approved Corepack preparation fix and rollout documentation were committed as `6bf3379` and pushed to the ticket and Integration branches. The full local gate passed after fixes on 2026-10-26. Both permitted independent reviewer agents completed follow-up reviews with no remaining actionable findings; dedicated Bugbot/Security Review agent types were unavailable. Vercel/Neon settings, Clerk DNS/certificates, and separate Clerk environment entries were configured through the dashboards. Production secret verification and hosted deployment acceptance remain pending; see the runbook's evidence table.
 
 ## Global Constraints
 
@@ -109,9 +109,9 @@
 - [x] Review all tracked Markdown documents and relevant deployment/auth/database references; link current guides and annotate historical CHR-5/CHR-7 records.
 - [x] Install from the frozen lockfile and run `pnpm verify:all` with Node 24.20.0 and pnpm 10.34.7: formatting, lint, typecheck, 172 unit tests, 21 database integration tests, 38 hook tests, four authenticated/setup/signed-out Playwright tests, and production build passed after review fixes. Docker and registry access required sandbox escalation; the escalated runs passed.
 - [x] Obtain user permission and run independent bug/security reviewer agents, resolve all three findings, rerun the full gate, and obtain clean follow-up reviews. Dedicated Bugbot/Security Review agent types are not exposed by this runtime; the reviews used independent general agents in those roles.
-- [ ] Present the unstaged Task 3 diff, wait for explicit review approval, inspect intended staged files, and commit only with authorization. No automatic push or PR creation.
+- [x] Obtain explicit unstaged-review approval and commit Task 3 as `8436c71`.
 
-**Review findings resolved in Task 3:** add safe handling for asynchronous preparation-client errors and a real disconnect regression; match pg's `decodeURI` database-name semantics; reject inherited `PGPORT` before any child starts. Each unit regression failed before the corresponding fix and passed afterward. A follow-up formatting run exposed TypeScript callback-flow narrowing in inline failure checks; a closure helper preserves the event-updated failure and passes lint. The final full gate passed all eight stages. All new implementation changes remain unstaged pending review.
+**Review findings resolved in Task 3:** add safe handling for asynchronous preparation-client errors and a real disconnect regression; match pg's `decodeURI` database-name semantics; reject inherited `PGPORT` before any child starts. Each unit regression failed before the corresponding fix and passed afterward. A follow-up formatting run exposed TypeScript callback-flow narrowing in inline failure checks; a closure helper preserves the event-updated failure and passes lint. The final full gate passed all eight stages. Task 3 implementation was reviewed and committed as `8436c71`.
 
 ## Task 4: pin nested hosted database preparation
 
@@ -121,8 +121,22 @@
 
 - [x] Diagnose the first explicit Integration preparation attempt: Vercel's ambient pnpm 10.28.0 was selected by the nested root script despite the outer Corepack command using pinned pnpm 10.34.7.
 - [x] Prefix the root `db:prepare` script with `corepack` so its package dispatch uses the repository's pinned version, matching the existing build script.
-- [ ] Verify the change, obtain unstaged-diff review approval, and commit the fix with directly related rollout documentation.
-- [ ] Update Git `integration` to the reviewed fix and repeat its explicit Preview deployment; verify migration/seed logs and repeat preparation for retry safety.
+- [x] Repeat the frozen install and full local gate successfully, obtain unstaged-diff approval, inspect the five intended staged files, and commit as `6bf3379`. Both permitted independent follow-up reviewers found no actionable findings.
+- [x] Push `6bf3379` to the ticket and remote `integration` branches. Automatic Integration entry `CAYm2Q3cBXXdLAfpEATpWqR7j7da` canceled; explicit redeploy `3fFGN8z1V85GDAK6bPgGAEYWFRyK` reached Ready and logged `Database preparation complete.`
+- [ ] Repeat preparation for retry safety and complete the separate migration experiment. Hosted signed-in persistence still reports a session-refresh error after reload; investigate before acceptance.
+
+## Task 5: diagnose rejected hosted sessions
+
+**Prepared commit subject:** `[CHR-12] trace rejected sessions`
+
+**Commit hook input:** `trace rejected sessions`
+
+- [x] Confirm the browser sends a bearer token and receives 401 from `POST /api/me`. The visible token has the expected Development issuer and ticket Preview origin, an active session, subject/session identifiers, and an expiry after the request. Saved Preview issuer matches. These observations do not establish signature validity or the hidden secret's instance.
+- [x] Add server-only logging of allowlisted Clerk verification categories, replacing unknown reasons with a fixed fallback. Never log raw errors, messages, tokens, keys, or user details; keep the API response generic.
+- [x] Add focused regressions for recognized categories and arbitrary reason redaction; observe both fail before implementation and pass afterward.
+- [x] Run the full local verification gate: formatting, lint, typecheck, 174 unit tests, 21 database integration tests, 38 hook tests, four Playwright tests, and build passed. Owner completed unstaged review and approved committing/pushing the diagnostic after follow-up reviews pass.
+- [x] Complete permitted independent bug/security follow-up reviews; both reported no actionable findings. Dedicated reviewer types remain unavailable; existing general agents performed the reviews.
+- [ ] With owner approval, push the diagnostic ticket Preview, inspect the rejection category in Vercel runtime logs, fix the demonstrated cause, and repeat signed-in persistence acceptance.
 
 ## Hosted rollout and acceptance (external evidence, not an extra Git commit)
 

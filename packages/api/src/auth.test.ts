@@ -1,4 +1,4 @@
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {verifyToken} from '@clerk/backend';
 import {createAuthenticator} from './auth';
 
@@ -27,8 +27,31 @@ const authenticate = createAuthenticator(options);
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
+afterEach(() => vi.restoreAllMocks());
 describe('Clerk session verification', () => {
+  it('logs a recognized verification category without error details', async () => {
+    vi.mocked(verifyToken).mockRejectedValue(
+      Object.assign(new Error('private token and key details'), {
+        reason: 'secret-key-invalid',
+        token: 'private-token',
+      }),
+    );
+    expect(await authenticate(request('Bearer private-token'))).toBeNull();
+    expect(console.warn).toHaveBeenCalledExactlyOnceWith(
+      'Clerk session rejected',
+      'secret-key-invalid',
+    );
+  });
+  it('replaces arbitrary verification reasons with a fixed category', async () => {
+    vi.mocked(verifyToken).mockRejectedValue({reason: 'private-token'});
+    expect(await authenticate(request('Bearer private-token'))).toBeNull();
+    expect(console.warn).toHaveBeenCalledExactlyOnceWith(
+      'Clerk session rejected',
+      'verification-failed',
+    );
+  });
   it.each([undefined, '', 'Basic abc', 'Bearer ', 'Bearer a b'])(
     'rejects missing or malformed bearer credentials',
     async header => {
