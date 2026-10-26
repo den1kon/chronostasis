@@ -7,7 +7,8 @@
   "scripts": {
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/migrate.ts",
-    "db:seed": "tsx src/seed.ts"
+    "db:seed": "tsx src/seed.ts",
+    "db:prepare": "tsx src/prepare.ts"
   },
   "dependencies": {
     "@chronostasis/contracts": "workspace:*",

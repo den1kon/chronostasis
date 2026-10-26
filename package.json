@@ -23,6 +23,7 @@
     "db:generate": "pnpm --filter @chronostasis/db db:generate",
     "db:migrate": "pnpm --filter @chronostasis/db db:migrate",
     "db:seed": "pnpm --filter @chronostasis/db db:seed",
+    "db:prepare": "pnpm --filter @chronostasis/db db:prepare",
     "test:integration": "node scripts/test-integration.mjs",
     "verify:all": "node scripts/verify-all.mjs",
     "dev:api": "pnpm --filter @chronostasis/api-server dev"

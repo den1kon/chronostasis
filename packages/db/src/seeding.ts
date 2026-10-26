@@ -1,8 +1,10 @@
 import {sql} from 'drizzle-orm';
-import type {Database} from './client';
+import type {DatabaseOperations} from './client';
 import {chestItems, chests, items} from './schema';
 
-export async function seedCatalogue(database: Database): Promise<void> {
+export async function seedCatalogue(
+  database: DatabaseOperations,
+): Promise<void> {
   await database.orm.transaction(async transaction => {
     await transaction
       .insert(items)

@@ -1,5 +1,6 @@
 import {drizzle} from 'drizzle-orm/node-postgres';
 import {sql} from 'drizzle-orm';
+import type {NodePgDatabase} from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import type {PoolConfig} from 'pg';
 import {readDatabaseEnv} from './env.js';
@@ -40,4 +41,7 @@ export function createDatabase(connectionString: string) {
     },
   };
 }
+
+export type DatabaseOperations = {orm: NodePgDatabase<typeof schema>};
+
 export type Database = ReturnType<typeof createDatabase>;
