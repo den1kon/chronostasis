@@ -73,6 +73,16 @@
   explicitly approves ticket completion.
 - Approval of the unstaged diff does not by itself approve ticket completion.
 
+## Code comments
+
+- Add a brief comment above new or modified functions whose purpose,
+  side effects, or constraints are not clear from their name and signature.
+- Usually keep function comments to one or two lines; use more when
+  complex behavior needs explanation.
+- Explain intent, important constraints, and non-obvious decisions.
+  Avoid comments that merely repeat the code.
+- Update comments when changing the behavior they describe.
+
 ## Database design
 
 - Store entity metadata once and model relationships with foreign keys.

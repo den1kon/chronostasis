@@ -65,20 +65,17 @@ Commit a migration with the schema change. Compose applies pending migrations an
 
 `pnpm db:prepare` is the combined migration-and-catalogue command used by the hosted deployment runner. It applies pending migrations, seeds the required catalogue, and serializes both operations on one direct PostgreSQL connection. Local Compose keeps its existing `db-init` startup flow; do not run `db:prepare` against a hosted database from a laptop.
 
-For Vercel, configure the Neon integration with the `NEON_` prefix and enable preview database branches. It supplies `NEON_POSTGRES_URL` (pooled runtime connection) and `NEON_POSTGRES_URL_NON_POOLING` (direct migration connection). The database environment helper prefers explicit `DATABASE_URL` / `MIGRATION_DATABASE_URL` values and falls back to those Neon variables. It also accepts `NEON_DATABASE_URL` / `NEON_DATABASE_URL_UNPOOLED` for compatibility, so Compose and hosted functions use their respective databases.
+### Vercel database workflow
+
+The hosted-only `deploy:build` runner validates configuration, typechecks the Vercel Functions, builds the web app, then runs `db:prepare` only for Production or a deliberately redeployed `integration` branch. Ordinary feature, bugfix, and maintenance Preview deployments use the shared Integration database and never run migrations. Root `pnpm build` and local Compose do not invoke the hosted runner.
+
+Keep two persistent Neon branches. Set Integration as Neon's default branch and Production as the branch selected for Vercel Production. Connect the Neon integration with the `NEON_` prefix and disable database branches per Preview deployment. Vercel supplies a pooled runtime URL and direct migration URL. The runner accepts the pair `NEON_POSTGRES_URL` / `NEON_POSTGRES_URL_NON_POOLING` or `NEON_DATABASE_URL` / `NEON_DATABASE_URL_UNPOOLED`. Set `DEPLOYMENT_INTEGRATION_DB_HOST` and `DEPLOYMENT_PRODUCTION_DB_HOST` to the corresponding direct endpoint hostnames in both Preview and Production. If an endpoint changes, update its marker before deploying. Hosted `DATABASE_URL` and `MIGRATION_DATABASE_URL` overrides are rejected; local database variable precedence remains unchanged.
+
+Vercel's `ignoreCommand` skips automatic Preview deployments for the `integration` branch. To apply a migration to Integration, select its latest Vercel deployment, confirm the commit, choose Redeploy, and uncheck “Use project's Ignore Build Step.” This intentionally reruns the same hosted build against Integration and prepares it after the app checks pass. Production deployments prepare the configured Production database automatically. A failed app check prevents preparation; a migration/seed failure fails the deployment. Applied migrations are not rolled back if later deployment packaging fails, so make schema changes backward-compatible.
 
 Use Clerk development keys in Vercel's Preview environment and production keys in Production. Keep `CLERK_AUTHORIZED_PARTIES` explicit locally and in Production; remove its Preview environment value. The API builds Preview's allowlist from the exact deployment and branch origins supplied by Vercel's `VERCEL_URL` and `VERCEL_BRANCH_URL`, so each ticket branch can use its generated URL without manually editing environment variables. Enable Vercel system environment variables in the project settings. Use a Clerk Development account for both local and Preview testing; it is separate from Production users.
 
-Vercel runs `pnpm typecheck` in `apps/web` before building the Vite frontend. This checks the serverless function entrypoints with Node's ESM resolution rules; the web app TypeScript config repeats shared compiler settings because Vercel does not follow TypeScript project references. The root `pnpm typecheck` includes this function check as well.
-
-After linking the checkout to the Vercel project, apply migrations and seed the production catalogue through the Production environment:
-
-```sh
-vercel env run -e production -- pnpm db:migrate
-vercel env run -e production -- pnpm db:seed
-```
-
-These commands are manual; deployments do not run them automatically. Repeat schema migrations for any Neon preview branch that needs a newer schema.
+The hosted runner uses the same serverless function typecheck as `pnpm typecheck`, then the ordinary app build. No laptop migration command or hosted database credential is required. Feature Previews and the explicit Integration deployment share the same persistent database, so test risky migrations on an isolated Neon branch before preparing Integration.
 
 ## Format, lint, and test
 

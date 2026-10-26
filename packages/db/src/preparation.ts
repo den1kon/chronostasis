@@ -12,6 +12,8 @@ const lockPollIntervalMs = 250;
 
 type PreparationOptions = {lockWaitMs?: number};
 
+// Poll for a session lock with a bounded wait so concurrent deployments serialize
+// preparation without leaving another build waiting indefinitely.
 async function acquirePreparationLock(
   client: pg.Client,
   lockWaitMs: number,
@@ -32,6 +34,8 @@ async function acquirePreparationLock(
   }
 }
 
+// Hold one physical connection and session lock across migrations and seeding.
+// Always release resources, preserving the original failure if cleanup also fails.
 export async function prepareDatabase(
   connectionString: string,
   options: PreparationOptions = {},

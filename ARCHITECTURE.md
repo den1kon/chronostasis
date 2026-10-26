@@ -1,10 +1,10 @@
 # Chronostasis architecture
 
-Updated: 2026-10-25.
+Updated: 2026-10-26.
 
 ## Scope and deployment status
 
-Chronostasis is a mobile-first application foundation: a React client signs in with Clerk, calls a TypeScript API, and persists an application user and catalogue in PostgreSQL. Focus timing, chest opening, loot selection, and owned inventory are not implemented. The owner has provisioned a Vercel deployment and Neon project; hosted database connectivity and migrations still need verification. PWA packaging and Capacitor/iOS packaging are future work.
+Chronostasis is a mobile-first application foundation: a React client signs in with Clerk, calls a TypeScript API, and persists an application user and catalogue in PostgreSQL. Focus timing, chest opening, loot selection, and owned inventory are not implemented. The repository now contains a Vercel build runner for shared Integration and persistent Production Neon databases; account settings and hosted behavior still need owner verification. PWA packaging and Capacitor/iOS packaging are future work.
 
 ## Workspace
 
@@ -16,7 +16,7 @@ The pnpm monorepo uses TypeScript, React, Vite, Tailwind CSS, Vercel Functions a
 - `packages/contracts` defines browser-safe Zod response schemas and inferred types.
 - `packages/db` owns the Drizzle schema, migrations, PostgreSQL pool, repository operations, and transactional catalogue seed.
 - `tests/e2e` contains signed-out and authenticated Playwright browser tests.
-- `scripts` contains the full local verification runner, Git hook tooling, and isolated database/Playwright test runners.
+- `scripts` contains the full local verification runner, Git hook tooling, isolated database/Playwright test runners, and the hosted deployment target validator/build runner.
 
 Workspace libraries emit declarations for TypeScript project references. Type-aware ESLint and strict source type checking run across the workspace. `skipLibCheck` is limited to database, API, browser, and tooling projects to work around errors in installed Drizzle/Clerk declarations; contracts and the local runtime retain declaration checking.
 
@@ -37,7 +37,7 @@ flowchart LR
 
 The frontend obtains Clerk bearer tokens and calls `POST /api/me` to idempotently create the current application user, then `GET /api/me` to confirm the persisted identity. “Account ready” requires both responses to refer to the same user. Requests are scoped to the active user/session and cancelled when the relevant component unmounts.
 
-The local Node adapter and Vercel Functions entrypoints convert requests to the same Web `Request`/`Response` handlers. Both preserve request method, headers, and raw body bytes, enforce a 64 KiB body limit, and return the same safe JSON error contract. Vercel runs a dedicated typecheck for its function entrypoints before the Vite build. Its app-level `tsconfig.json` repeats the shared compiler options because Vercel does not follow TypeScript project references. Hosted invocation has not been verified.
+The local Node adapter and Vercel Functions entrypoints convert requests to the same Web `Request`/`Response` handlers. Both preserve request method, headers, and raw body bytes, enforce a 64 KiB body limit, and return the same safe JSON error contract. The hosted runner typechecks function entrypoints before the Vite build. Its app-level `tsconfig.json` repeats the shared compiler options because Vercel does not follow TypeScript project references. Hosted invocation has not been verified.
 
 ## Authentication and API
 
@@ -85,4 +85,4 @@ The focused root checks are `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, 
 
 ## Hosting boundary
 
-The hosted topology is a static Vite build and Vercel Functions connected to Neon PostgreSQL. `apps/web/api` contains the Vercel adapters and routing configuration. Vercel and Neon are provisioned; the Neon integration with the `NEON_` prefix supplies `NEON_POSTGRES_URL` for pooled runtime connections and `NEON_POSTGRES_URL_NON_POOLING` for direct migrations. Production migration and catalogue seeding are explicit commands, not part of deployment. Hosted API/database behavior should be verified after initialization. A future PWA or Capacitor shell can reuse the React client and HTTPS API, with its own platform/auth callback work.
+The hosted topology is a static Vite build and Vercel Functions connected to Neon PostgreSQL. `apps/web/api` contains the Vercel adapters and routing configuration. `scripts/deploy-build.mjs` validates the Vercel environment, branch, Neon URL pair, and configured direct-host marker before running the function typecheck and app build. Production deployments prepare the persistent Production branch. A Vercel ignored-build rule skips automatic deployments of the `integration` branch; an owner can explicitly redeploy its selected commit to prepare the persistent Integration branch. Other Preview builds share Integration and skip preparation. A direct PostgreSQL connection and session advisory lock serialize migrations and catalogue seeding. Local builds and Docker Compose remain separate from this hosted runner. Service settings and hosted API/database behavior remain unverified until exercised. A future PWA or Capacitor shell can reuse the React client and HTTPS API, with its own platform/auth callback work.

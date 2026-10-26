@@ -1,6 +1,6 @@
 # Chronostasis
 
-Chronostasis is a mobile-first focus app foundation. Clerk sign-in and account persistence work locally; Focus and Inventory are placeholders. Timer and rewards are future work. Vercel and Neon are provisioned; hosted database connectivity still needs configuration and migration.
+Chronostasis is a mobile-first focus app foundation. Clerk sign-in and account persistence work locally; Focus and Inventory are placeholders. Timer and rewards are future work. The hosted build validates its Neon target, prepares Integration on an explicit redeploy, and prepares Production automatically; owner-side Vercel/Neon settings and hosted acceptance still need verification.
 
 ## Run locally
 
@@ -75,17 +75,8 @@ Run `pnpm format:check` for GTS formatting verification. No CI workflow is check
 
 ## Vercel and Neon
 
-Configure the Neon integration with the `NEON_` prefix for Production and Preview, and enable a separate database branch for each Preview deployment. The integration provides `NEON_POSTGRES_URL` (pooled runtime connection) and `NEON_POSTGRES_URL_NON_POOLING` (direct migration connection); the database package also accepts the `NEON_DATABASE_URL` and `NEON_DATABASE_URL_UNPOOLED` names. Local `DATABASE_URL` and `MIGRATION_DATABASE_URL` take precedence, so Docker Compose keeps using its local database.
+Use two persistent Neon branches: Integration is the default branch shared by all Vercel Previews, and Production is Vercel's configured Production branch. Disable database branch creation per deployment. The hosted runner accepts either the `NEON_POSTGRES_URL` / `NEON_POSTGRES_URL_NON_POOLING` pair or `NEON_DATABASE_URL` / `NEON_DATABASE_URL_UNPOOLED`; configure both direct-host markers in Preview and Production. Do not set hosted `DATABASE_URL` or `MIGRATION_DATABASE_URL` overrides. Local development keeps using Docker PostgreSQL.
 
 Use Clerk development keys for Vercel Preview and production keys for Production. Keep `CLERK_AUTHORIZED_PARTIES` set to explicit origins locally and in Production. Remove its Preview environment value: the API builds Preview's allowlist from the exact Vercel deployment and branch URLs, so every ticket branch works without per-PR settings changes. Enable Vercel system environment variables for the project. A Clerk Development account can be used locally and on Preview; Production users remain separate.
 
-Vercel's build runs the serverless API typecheck before the Vite build. The app-level TypeScript config repeats the compiler settings needed by Vercel, which does not follow TypeScript project references.
-
-After linking this checkout to the Vercel project, initialize the production database with the Vercel Production environment:
-
-```sh
-vercel env run -e production -- pnpm db:migrate
-vercel env run -e production -- pnpm db:seed
-```
-
-Environment changes apply to new deployments, so redeploy after changing Vercel settings. See [the development guide](docs/DEVELOPMENT.md) for the database workflow.
+The Vercel build runner validates the target, typechecks the serverless API, builds the app, then prepares the database only for Production or an explicit `integration` branch redeploy. Feature Previews share Integration and never migrate. Vercel's ignored-build rule skips automatic deployments of the `integration` branch; to prepare Integration, redeploy that branch's latest deployment and uncheck “Use project's Ignore Build Step.” Local `pnpm build` stays independent of hosted credentials. See [the development guide](docs/DEVELOPMENT.md) for settings and workflow.
