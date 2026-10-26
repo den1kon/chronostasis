@@ -10,7 +10,7 @@
 
 **Spec:** [CHR-12 design](../specs/2026-10-25-chr-12-deployment-workflow-design.md).
 
-**Status:** Task 1 is implemented and committed as `5a134a3`; Task 2 implementation is in progress and remains unstaged for user review. Vercel/Neon settings and hosted acceptance require owner verification.
+**Status:** Task 1 is committed as `5a134a3` and Task 2 as `58049bb`. Task 3 documentation and three review fixes are implemented and unstaged for user review. The full local gate passed after fixes on 2026-10-26. Both permitted independent reviewer agents completed follow-up reviews with no remaining actionable findings; dedicated Bugbot/Security Review agent types were unavailable. Vercel/Neon settings and hosted acceptance require owner verification.
 
 ## Global Constraints
 
@@ -90,26 +90,28 @@
 - [x] Wire Vercel build/ignore commands and root `deploy:build`; ordinary root build remains separate.
 - [x] Replace current manual hosted migration guidance in README, the development guide, and architecture with the automatic Production/explicit Integration flow.
 - [x] Run focused script tests, `pnpm test:unit`, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, and `pnpm build`. Do not run `deploy:build` against live services as local verification.
-- [ ] Present the unstaged Task 2 diff; wait for explicit review approval, stage only authorized files, inspect the staged diff, then commit only if authorized. Verify exactly one prefix and no body.
+- [x] Present Task 2 and subsequent comment-policy/comment additions, receive explicit review approval, inspect the staged diff, and commit as `58049bb` with exactly one ticket prefix and no body.
 
 ### Task 3: document and validate the contributor release flow
 
-**Prepared subject:** `[CHR-12] document deployment flow`
+**Prepared subject:** `[CHR-12] finish deployment flow`
 
-**Hook input:** `document deployment flow`
+**Hook input:** `finish deployment flow`
 
-**Files:** new `docs/DEPLOYMENT.md`, README/development/architecture, this spec/plan, affected historical docs only as needed for supersession notes. No unrelated policy or skill changes.
+**Files:** new `docs/DEPLOYMENT.md`, README/development/architecture, this spec/plan, affected historical docs, and review fixes/regressions in database preparation and deployment configuration. No unrelated policy or skill changes. The final task includes the three review findings so its commit covers the validated release flow.
 
 **Interfaces:** the deployed runner/commands from Tasks 1–2; dashboards configured by the owner; manual hosted evidence tied to deployment and Neon branch identifiers, without credentials.
 
-- [ ] Write the owner runbook using the spec's Vercel/Neon/Clerk checklists. Separate one-time owner setup from daily contributor steps. Document both target markers, their source, and the requirement to update them if either endpoint changes. Explain feature Preview shared Integration access and the manual Vercel redeploy sequence: select the latest `integration` branch deployment, confirm its commit, choose Redeploy, and uncheck “Use project's Ignore Build Step.”
-- [ ] Explain service permissions accurately: personal-account exception, public fork approvals, organization/team rules, and that merging does not provide a pre-merge Preview. Avoid a blanket requirement to buy Pro; require a real contributor push to establish eligibility.
-- [ ] Document Clerk Production configuration for `chronostasis.tech`, already added to Vercel Production: domain verification, matching key/issuer triplet, and authorized origin. State that the Vercel domain attachment alone does not confirm Clerk setup. Keep dynamic Preview versus explicit Production authorized parties. Do not introduce authentication bypasses or per-branch URL editing.
-- [ ] Add named diagnostics: build/config/migration/seed failures, safe database identity inspection, wrong Neon branch, inherited parent data, retention cleanup, and rollback compatibility. Explain that direct navigation to `/api/me` is expected to return 401 because the API requires the frontend's bearer header; the authenticated UI request is the acceptance check.
-- [ ] Review every tracked project document using `git ls-files '*.md'` and focused `rg` searches for manual deployment commands, database URL names, Preview/auth instructions, build settings, and CI claims. Update each affected current document; mark historical guidance superseded where needed. Keep architecture implemented/verified status accurate.
-- [ ] Install from the frozen lockfile and run `pnpm verify:all` (formatting, lint, typecheck, unit, integration, hooks, authenticated E2E, production build). Report the named failure and unavailable checks; signed-out E2E is not full acceptance. Use Docker for the required database/browser checks.
-- [ ] After local implementation verification, ask permission for Bugbot and Security Review as AGENTS.md requires; resolve findings, rerun affected checks, and obtain follow-up reviews within granted permission. A design completeness check is not either implementation review.
+- [x] Write the owner runbook with distinct setup and daily release steps, both host markers, shared Integration behavior, and the selected-commit manual redeploy sequence.
+- [x] Explain personal-account, organization/team, and public-fork deployment permissions; require real collaborator Preview evidence before deciding on account changes.
+- [x] Document Clerk Production configuration for `chronostasis.tech`, exact issuer/key/origin settings, and the distinction between the Vercel domain attachment and Clerk verification.
+- [x] Add stage diagnostics, safe database identity inspection, parent-data/retention guidance, rollback compatibility, and the authenticated UI acceptance procedure.
+- [x] Review all tracked Markdown documents and relevant deployment/auth/database references; link current guides and annotate historical CHR-5/CHR-7 records.
+- [x] Install from the frozen lockfile and run `pnpm verify:all` with Node 24.20.0 and pnpm 10.34.7: formatting, lint, typecheck, 172 unit tests, 21 database integration tests, 38 hook tests, four authenticated/setup/signed-out Playwright tests, and production build passed after review fixes. Docker and registry access required sandbox escalation; the escalated runs passed.
+- [x] Obtain user permission and run independent bug/security reviewer agents, resolve all three findings, rerun the full gate, and obtain clean follow-up reviews. Dedicated Bugbot/Security Review agent types are not exposed by this runtime; the reviews used independent general agents in those roles.
 - [ ] Present the unstaged Task 3 diff, wait for explicit review approval, inspect intended staged files, and commit only with authorization. No automatic push or PR creation.
+
+**Review findings resolved in Task 3:** add safe handling for asynchronous preparation-client errors and a real disconnect regression; match pg's `decodeURI` database-name semantics; reject inherited `PGPORT` before any child starts. Each unit regression failed before the corresponding fix and passed afterward. A follow-up formatting run exposed TypeScript callback-flow narrowing in inline failure checks; a closure helper preserves the event-updated failure and passes lint. The final full gate passed all eight stages. All new implementation changes remain unstaged pending review.
 
 ## Hosted rollout and acceptance (external evidence, not an extra Git commit)
 

@@ -1,5 +1,7 @@
 # CHR-7: Developer tooling and workflow design
 
+> Historical ticket design. Current contributor and deployment instructions live in [DEVELOPMENT.md](../../DEVELOPMENT.md) and [DEPLOYMENT.md](../../DEPLOYMENT.md); the original requirements below are retained.
+
 Status: implementation in progress. This design and its plan guide CHR-7; they do not authorize staging or committing changes.
 
 ## Suggested ticket metadata

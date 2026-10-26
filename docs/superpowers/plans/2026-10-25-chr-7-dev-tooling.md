@@ -1,5 +1,7 @@
 # CHR-7: GTS, pre-commit, and developer workflow plan
 
+> Historical ticket record. Use [DEVELOPMENT.md](../../DEVELOPMENT.md) and [DEPLOYMENT.md](../../DEPLOYMENT.md) for current workflows and the CHR-12 plan for current verification evidence. Status statements below describe the CHR-7 checkpoint.
+
 Status: implementation is in place. Formatting, lint, typecheck, unit, integration, hook, and build checks pass; authenticated E2E awaits Clerk test configuration, and Bugbot/Security Review await user permission. Each task is one planned commit. The plan does not authorize staging or committing before the user reviews the unstaged diff and explicitly confirms.
 
 ## Preconditions

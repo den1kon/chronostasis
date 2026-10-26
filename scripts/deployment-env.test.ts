@@ -173,6 +173,32 @@ describe('readDeploymentEnv', () => {
     ).toThrow();
   });
 
+  it('keeps reserved path encodings distinct as pg does when selecting a database', () => {
+    expect(() =>
+      readDeploymentEnv({
+        ...previewEnv(),
+        NEON_POSTGRES_URL: integrationRuntime.replace(
+          '/chronostasis',
+          '/team/db',
+        ),
+        NEON_POSTGRES_URL_NON_POOLING: integrationDirect.replace(
+          '/chronostasis',
+          '/team%2Fdb',
+        ),
+      }),
+    ).toThrow('must identify the same database');
+  });
+
+  it('rejects ambient PGPORT that would change an omitted migration port', () => {
+    expect(() =>
+      readDeploymentEnv({
+        ...previewEnv(),
+        PGPORT: '5433',
+        NEON_POSTGRES_URL: integrationRuntime.replace('.tech/', '.tech:5432/'),
+      }),
+    ).toThrow('PGPORT');
+  });
+
   it('does not disclose credentials in validation errors', () => {
     let message = '';
     try {

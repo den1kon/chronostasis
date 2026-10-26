@@ -6,37 +6,42 @@ const state = vi.hoisted(() => ({
     connect: ReturnType<typeof vi.fn>;
     query: ReturnType<typeof vi.fn>;
     end: ReturnType<typeof vi.fn>;
+    emit: (event: string, error: Error) => boolean;
   }>,
   migrate: vi.fn(),
   seed: vi.fn(),
 }));
 
-vi.mock('pg', () => ({
-  default: {
-    Client: class {
-      connect = vi.fn(() => {
-        state.events.push('connect');
-        return Promise.resolve();
-      });
-      query = vi.fn((query: string) => {
-        if (query.includes('pg_try_advisory_lock')) {
-          state.events.push('lock');
-          return Promise.resolve({rows: [{acquired: true}]});
-        }
-        state.events.push('unlock');
-        return Promise.resolve({rows: [{unlocked: true}]});
-      });
-      end = vi.fn(() => {
-        state.events.push('end');
-        return Promise.resolve();
-      });
+vi.mock('pg', async () => {
+  const {EventEmitter} = await import('node:events');
+  return {
+    default: {
+      Client: class extends EventEmitter {
+        connect = vi.fn(() => {
+          state.events.push('connect');
+          return Promise.resolve();
+        });
+        query = vi.fn((query: string) => {
+          if (query.includes('pg_try_advisory_lock')) {
+            state.events.push('lock');
+            return Promise.resolve({rows: [{acquired: true}]});
+          }
+          state.events.push('unlock');
+          return Promise.resolve({rows: [{unlocked: true}]});
+        });
+        end = vi.fn(() => {
+          state.events.push('end');
+          return Promise.resolve();
+        });
 
-      constructor() {
-        state.clients.push(this);
-      }
+        constructor() {
+          super();
+          state.clients.push(this);
+        }
+      },
     },
-  },
-}));
+  };
+});
 
 vi.mock('./migrations.js', () => ({
   migrateDatabase: state.migrate,
@@ -84,6 +89,24 @@ describe('database preparation', () => {
     ]);
     expect(state.clients).toHaveLength(1);
     expect(state.clients[0]?.end).toHaveBeenCalledOnce();
+  });
+
+  it('handles asynchronous client errors without exposing details or skipping cleanup', async () => {
+    const completion = prepareDatabase(connectionString).catch(
+      (error: unknown) => error,
+    );
+    let unhandled: unknown;
+    try {
+      state.clients[0]?.emit('error', new Error(`lost ${connectionString}`));
+    } catch (error) {
+      unhandled = error;
+    }
+    const failure = await completion;
+    expect(unhandled).toBeUndefined();
+    expect(failure).toMatchObject({message: 'Database connection failed.'});
+    expect(String(failure)).not.toContain('private-password');
+    expect(state.clients[0]?.end).toHaveBeenCalledOnce();
+    expect(state.seed).not.toHaveBeenCalled();
   });
 
   it('does not seed after migration failure and does not expose the connection string', async () => {

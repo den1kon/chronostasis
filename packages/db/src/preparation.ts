@@ -52,17 +52,31 @@ export async function prepareDatabase(
   let locked = false;
   let failure: Error | undefined;
 
+  // pg emits connection errors outside query promises while the client is idle.
+  // Record a safe failure so polling and cleanup retain control of the process.
+  client.on('error', () => {
+    failure ??= new Error('Database connection failed.');
+  });
+
+  // Re-read failures recorded by the event listener between awaited stages.
+  const assertConnectionActive = () => {
+    if (failure) throw failure;
+  };
+
   try {
     await client.connect();
+    assertConnectionActive();
     stage = 'lock';
     await acquirePreparationLock(client, lockWaitMs);
     locked = true;
+    assertConnectionActive();
     stage = 'migration';
     await migrateDatabase(database);
+    assertConnectionActive();
     stage = 'seed';
     await seedCatalogue(database);
   } catch {
-    failure = new Error(
+    failure ??= new Error(
       {
         connection: 'Database connection failed.',
         lock: 'Database preparation lock failed.',

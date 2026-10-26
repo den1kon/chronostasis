@@ -1,6 +1,6 @@
 # CHR-12: automatic database preparation for deployments
 
-Status: implementation in progress. Task 1 is implemented and committed; Task 2's deployment runner, validation, Vercel wiring, and current documentation are implemented in the unstaged working tree. Vercel/Neon dashboard settings and hosted acceptance remain pending owner verification.
+Status: Tasks 1 and 2 are committed as `5a134a3` and `58049bb`. Task 3's runbook, documentation updates, and three review fixes are implemented and unstaged. The full local gate passed after fixes on 2026-10-26. Permitted independent bug/security reviewer agents completed follow-up reviews with no remaining actionable findings; dedicated Bugbot/Security Review agent types were unavailable. Vercel/Neon dashboard settings and hosted acceptance remain pending owner verification.
 
 ## Intent
 
@@ -13,7 +13,7 @@ A contributor develops against Docker, pushes a ticket branch, and reviews a Ver
 - `packages/db/src/migrations.ts` applies committed Drizzle migrations. The catalogue seed upserts stable item/chest IDs and inserts missing relationships transactionally.
 - Local Compose already migrates and seeds its fixed local database. `pnpm build` and `pnpm verify:all` must remain usable without hosted credentials.
 - The API verifies Clerk bearer tokens and creates an application user through authenticated requests. Signing into Clerk alone does not insert a Neon user.
-- README and the development guide now describe shared Integration Previews and automatic Production/explicit Integration preparation; the detailed owner runbook remains Task 3.
+- README and the development guide describe shared Integration Previews and automatic Production/explicit Integration preparation. The detailed owner setup, release, recovery, and evidence record is in [DEPLOYMENT.md](../../DEPLOYMENT.md).
 
 ## Approach
 
@@ -40,8 +40,8 @@ Alternatives considered: a GitHub Actions/Jenkins release pipeline gives more co
 - Add root `deploy:build` and database `db:prepare` commands. `apps/web/vercel.json` calls the root hosted runner through `node ../../scripts/deploy-build.mjs`; the runner resolves all child working directories from its own file location.
 - The hosted runner requires `VERCEL=1` and `VERCEL_ENV=preview` or `production`. Unknown/custom environments fail explicitly until supported.
 - Read `NEON_POSTGRES_URL` and `NEON_POSTGRES_URL_NON_POOLING`; alternatively accept the complete `NEON_DATABASE_URL` / `NEON_DATABASE_URL_UNPOOLED` pair. Require both runtime and direct values. Multiple configured pairs must identify the same destination; reject ambiguity.
-- Reject nonempty hosted `DATABASE_URL` and `MIGRATION_DATABASE_URL` rather than letting old local/manual overrides redirect preparation or runtime. The existing local environment precedence remains unchanged.
-- Validate PostgreSQL URLs with the existing destination-override protections. Require the runtime/direct endpoints to identify the same database and port after removing the Neon `-pooler` suffix from the endpoint's first DNS label. The migration endpoint must be direct. Reject local hosts in the hosted runner.
+- Reject nonempty hosted `DATABASE_URL`, `MIGRATION_DATABASE_URL`, and `PGPORT` rather than letting old local/manual overrides redirect preparation or runtime. `pg` inherits `PGPORT` for URLs with no explicit port; rejecting it preserves the validated default of 5432. The existing local environment precedence remains unchanged.
+- Validate PostgreSQL URLs with the existing destination-override protections. Require the runtime/direct endpoints to identify the same database and port after removing the Neon `-pooler` suffix from the endpoint's first DNS label. Match pg's `decodeURI` database-name semantics, preserving reserved-character encodings. The migration endpoint must be direct. Reject local hosts in the hosted runner.
 - Add `DEPLOYMENT_PRODUCTION_DB_HOST` and `DEPLOYMENT_INTEGRATION_DB_HOST`, non-secret hostnames containing the respective **direct** Neon endpoints. Require both in Preview and Production. Production must match the production marker; every Preview must match the Integration marker. Reject malformed values and cross-target connections. These guards catch accidental misconfiguration, not malicious changes by trusted contributors.
 - Pass validated runtime and migration URLs to the preparation child as explicit `DATABASE_URL` and `MIGRATION_DATABASE_URL`. Do not print URL values, passwords, tokens, raw SQL errors, or full environment dumps. Errors identify the variable/stage and safe error category.
 - No CLI installation, `vercel link`, Neon API token, or hosted database URL in a contributor's local `.env` is required for automatic deployments.
@@ -97,9 +97,9 @@ Vercel's Git docs distinguish personal-account collaborators from organization/g
 - [ ] An actual collaborator changes UI, pushes a ticket branch, opens a PR, and gets a working Preview connected to Integration without local hosted credentials or manual schema commands. Confirm ordinary Preview build does not run migrations.
 - [ ] A disposable change adds an additive migration and catalogue update. Confirm the feature Preview build leaves Integration and Production unchanged. Explicitly redeploy the integration-branch commit, verify Integration receives migration/catalogue data, then verify Preview deployments use that shared schema while Production remains unchanged.
 - [ ] Repeat Integration preparation and verify no duplicates. Record the visible manual trigger and exact commit it deploys.
-- [ ] Missing credentials, stale unprefixed overrides, pooled-only migration config, mismatched runtime/direct destinations, and Preview pointing at production all fail before database writes.
-- [ ] Build failure prevents database preparation; migration failure prevents seeding; seed failure fails deployment. Logs name the failed stage without exposing secrets.
-- [ ] Concurrent preparation jobs serialize, retries remain safe, and locks release after failure/disconnection, proven on Docker PostgreSQL.
+- [x] Local regression tests prove missing credentials, stale unprefixed overrides (including `PGPORT`), pooled-only migration config, mismatched runtime/direct destinations, and Preview pointing at Production fail before children start. Hosted exercise remains pending.
+- [x] Local runner/preparation tests prove build failure prevents preparation, migration failure prevents seeding, and seed failure returns failure with safe stage reporting. Hosted exercise remains pending.
+- [x] Concurrent preparation jobs serialize, retries remain safe, and locks release after failure/disconnection, proven on Docker PostgreSQL, including loss of the preparation connection itself.
 - [ ] `/api/health` returns HTTP 200 and `{"status":"ok"}` on the deployed environment. Sign in through the UI and inspect the app's authenticated `/api/me` network request; verify its user in that exact Preview database. Direct navigation to `/api/me` sends no bearer token and should return 401 even when the browser has a Clerk login.
 - [ ] Merge approved code into `main`; Production runs preparation against its persistent branch, preserves existing users, and contains the approved catalogue/schema. Verify health and authenticated account persistence there too.
 - [ ] Full repository checks pass, Bugbot and Security Review finish after permission, findings are resolved/ignored explicitly, and the user approves ticket completion. External checks remain pending until actually exercised.

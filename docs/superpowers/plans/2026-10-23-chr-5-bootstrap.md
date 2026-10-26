@@ -1,5 +1,7 @@
 # CHR-5 Bootstrap Implementation Plan
 
+> Historical ticket record. For current deployment behavior and settings, use [the CHR-12 runbook](../../DEPLOYMENT.md); references below to future Vercel/Neon work describe the CHR-5 checkpoint.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Native execution is recommended here because tasks share runtime, auth, and workspace interfaces; use subagents only if the user selects that execution approach.
 
 **Goal:** Bootstrap a reproducible local application proving React → authenticated TypeScript API → Postgres persistence, with developer checks and documentation.

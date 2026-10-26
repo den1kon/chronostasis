@@ -30,7 +30,7 @@ function readUrl(value, name) {
         `${name} must be a PostgreSQL connection URL without destination overrides.`,
       );
     }
-    const databaseName = decodeURIComponent(url.pathname.slice(1));
+    const databaseName = decodeURI(url.pathname.slice(1));
     if (PLACEHOLDER.test(databaseName)) {
       fail(`${name} must identify a configured PostgreSQL database.`);
     }
@@ -71,15 +71,16 @@ function directHost(host) {
   return labels.join('.');
 }
 
-// Compare exact endpoints independently of credentials and URL encoding.
+// Compare exact endpoints using pg's decodeURI behavior for database names,
+// which preserves encodings of reserved characters such as %2F.
 function destination(url) {
-  return `${normalizedHost(url.hostname)}:${url.port || '5432'}:${decodeURIComponent(url.pathname.slice(1))}`;
+  return `${normalizedHost(url.hostname)}:${url.port || '5432'}:${decodeURI(url.pathname.slice(1))}`;
 }
 
 // Treat pooled and direct endpoints as one database while retaining the port
 // and decoded database name so a matching hostname cannot hide a mismatch.
 function databaseIdentity(url) {
-  return `${directHost(url.hostname)}:${url.port || '5432'}:${decodeURIComponent(url.pathname.slice(1))}`;
+  return `${directHost(url.hostname)}:${url.port || '5432'}:${decodeURI(url.pathname.slice(1))}`;
 }
 
 // Read the owner's expected direct endpoint hostname, which guards against
@@ -114,7 +115,9 @@ export function readDeploymentEnv(env) {
   const branch = env['VERCEL_GIT_COMMIT_REF']?.trim();
   if (!branch) fail('VERCEL_GIT_COMMIT_REF is required.');
 
-  for (const name of ['DATABASE_URL', 'MIGRATION_DATABASE_URL']) {
+  // pg falls back to PGPORT when a URL omits its port, defeating the validated
+  // default of 5432 if an old unprefixed value remains in the environment.
+  for (const name of ['DATABASE_URL', 'MIGRATION_DATABASE_URL', 'PGPORT']) {
     if (env[name]?.trim())
       fail(`${name} is not allowed in hosted deployment configuration.`);
   }

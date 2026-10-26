@@ -196,4 +196,43 @@ describe('serialized database preparation on Postgres', () => {
       {item_id: 'rusty-key'},
     ]);
   });
+
+  it('handles loss of its own connection while waiting for the lock', async () => {
+    const holder = await lockClient();
+    const applicationName = `prepare-disconnect-${randomUUID()}`;
+    const preparationUrl = new URL(connectionString);
+    preparationUrl.searchParams.set('application_name', applicationName);
+    const completion = prepareDatabase(preparationUrl.toString(), {
+      lockWaitMs: 2000,
+    }).catch((error: unknown) => error);
+
+    try {
+      let backendPid: number | undefined;
+      for (
+        let attempt = 0;
+        attempt < 60 && backendPid === undefined;
+        attempt++
+      ) {
+        const result = await database.orm.execute(
+          sql`select pid from pg_stat_activity where application_name = ${applicationName} and state = 'idle'`,
+        );
+        const candidate = result.rows[0]?.['pid'];
+        if (typeof candidate === 'number') backendPid = candidate;
+        else await delay(25);
+      }
+      if (backendPid === undefined)
+        throw new Error('Missing preparation backend PID.');
+
+      await database.orm.execute(
+        sql`select pg_terminate_backend(${backendPid})`,
+      );
+      const failure = await completion;
+      expect(failure).toMatchObject({message: 'Database connection failed.'});
+      expect(String(failure)).not.toContain(connectionString);
+    } finally {
+      await holder.query('select pg_advisory_unlock($1, $2)', lockKey);
+      await holder.end();
+      await completion;
+    }
+  });
 });
