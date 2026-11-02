@@ -1,6 +1,6 @@
 # CHR-12: automatic database preparation for deployments
 
-Status: CHR-12 source was released through `main` as `631d636` on 2026-11-02. Production preparation and retry passed; both databases have four migrations with digest `f02712c5bfe18967ae8eb5b1fe2a0741`, no probe table, and catalogue counts 3 items / 1 chest / 3 relationships. Integration retained two users. After the owner replaced the Production Clerk secret and redeployed, Production Account ready survived reload and its application user count became one. Migration-only triggering, non-migrating Previews, additive application, retry stability, failure isolation, cleanup, full local verification, and permitted independent bug/security follow-up reviews passed. Dedicated reviewer types were unavailable. Actual collaborator acceptance was explicitly waived. Final acceptance evidence is recorded in the runbook; explicit owner ticket-completion approval remains.
+Status: CHR-12 source was released through `main` as `631d636` on 2026-11-02. Production preparation and retry passed; both databases have four migrations with digest `f02712c5bfe18967ae8eb5b1fe2a0741`, no probe table, and catalogue counts 3 items / 1 chest / 3 relationships. Integration retained two users. After the owner replaced the Production Clerk secret and redeployed, Production Account ready survived reload and its application user count became one. Migration-only triggering, non-migrating Previews, additive application, retry stability, failure isolation, cleanup, full local verification, and permitted independent bug/security follow-up reviews passed. Dedicated reviewer types were unavailable. Actual collaborator acceptance was explicitly waived. Final acceptance evidence is recorded in the runbook; the owner explicitly approved ticket completion on 2026-11-02.
 
 ## Intent
 
@@ -80,7 +80,7 @@ The Integration action is documented and exercised: select the intended `integra
 - [x] Concurrent preparation jobs serialize, retries remain safe, and locks release after failure/disconnection, proven on Docker PostgreSQL, including loss of the preparation connection itself.
 - [x] Preview health and authenticated initialize/read identity agreement passed, including reload after cleanup. Integration has two application users; individual SQL identity lookup was not performed. Direct navigation to `/api/me` without a bearer token should return 401.
 - [x] Release approved source through `main`; Production preparation/retry, catalogue, health, and authenticated account persistence passed. Production started without application users; the owner then initialized one. Existing-user preservation was tested locally and on Integration, not against pre-existing Production users.
-- [ ] Full repository checks pass, Bugbot and Security Review finish after permission, findings are resolved/ignored explicitly, and the user approves ticket completion. External checks remain pending until actually exercised.
+- [x] Full repository checks and permitted independent bug/security reviews passed, findings resolved, hosted acceptance passed, collaborator path explicitly waived, and owner approved completion on 2026-11-02. Dedicated reviewer types were unavailable, as disclosed above.
 
 ## Scope boundaries
 

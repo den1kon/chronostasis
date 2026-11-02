@@ -27,6 +27,11 @@
 - `[CHR-1234] fix double reward`
 - `[CHR-1234] update tooling`
 
+## Ticket tracker access
+
+- Do not use Atlassian tools to read or change tickets.
+- The user handles ticket reads and status changes.
+
 ## Implementation plans
 
 - Split every implementation plan into tasks, each scoped to one Git commit.

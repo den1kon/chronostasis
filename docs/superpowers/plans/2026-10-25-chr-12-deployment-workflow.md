@@ -10,7 +10,7 @@
 
 **Spec:** [CHR-12 design](../specs/2026-10-25-chr-12-deployment-workflow-design.md).
 
-**Status:** CHR-12 source was released through `main` as `631d636` on 2026-11-02. Production preparation and retry passed; both databases have four migrations with digest `f02712c5bfe18967ae8eb5b1fe2a0741`, no probe table, and catalogue counts 3 items / 1 chest / 3 relationships. Integration retained two users. After the owner replaced the Production Clerk secret and redeployed, Production Account ready survived reload and its application user count became one. Migration-only triggering, non-migrating Previews, additive application, retry stability, failure isolation, cleanup, full local verification, and permitted independent bug/security follow-up reviews passed. Dedicated reviewer types were unavailable. Actual collaborator acceptance was explicitly waived. Final acceptance evidence is recorded below; explicit owner ticket-completion approval remains.
+**Status:** CHR-12 source was released through `main` as `631d636` on 2026-11-02. Production preparation and retry passed; both databases have four migrations with digest `f02712c5bfe18967ae8eb5b1fe2a0741`, no probe table, and catalogue counts 3 items / 1 chest / 3 relationships. Integration retained two users. After the owner replaced the Production Clerk secret and redeployed, Production Account ready survived reload and its application user count became one. Migration-only triggering, non-migrating Previews, additive application, retry stability, failure isolation, cleanup, full local verification, and permitted independent bug/security follow-up reviews passed. Dedicated reviewer types were unavailable. Actual collaborator acceptance was explicitly waived. Final acceptance evidence is recorded below; the owner explicitly approved ticket completion on 2026-11-02.
 
 ## Global Constraints
 
@@ -198,7 +198,7 @@
 - [x] Production deployment `BxV8dFxKXN9poKpkExXG4fiaqb9s` at `631d636` reached Ready; logs confirm `main`, Production typecheck/build and successful database preparation. Public page/health/redirect and unauthenticated 401 checks passed. No Preview artifact promotion or hosted database credentials on a laptop.
 - [x] Owner SQL confirms Production has four migrations with digest `f02712c5bfe18967ae8eb5b1fe2a0741`, no probe, and catalogue counts 3/1/3. Following secret correction and redeploy `6eBYY9A1hPZGg1tCXFPwPPPoBYxs`, Production Account ready survives reload and main has one application user. Integration retains two users and unchanged schema/catalogue counts.
 - [x] Explain implemented changes, daily development/migration/release flow, database contents, and Git/Neon Integration versus main to the owner.
-- [ ] Obtain explicit ticket-completion approval; release and unstaged-review approval do not imply completion approval.
+- [x] Owner explicitly approved ticket completion on 2026-11-02 after release verification and the development/database-flow explanation.
 
 ## Task 11: record Production acceptance
 
@@ -207,4 +207,4 @@
 **Commit hook input:** `record production checks`
 
 - [x] Record released source, successful Production preparation/retry, owner-entered Clerk secret correction, SQL schema/catalogue results, authenticated persistence and independent user counts. Reconcile README, architecture, runbook, spec and plan; validate documentation diff.
-- [ ] Commit the requested final evidence docs and fast-forward the approved main release with this documentation-only change; verify its deployment. Ticket completion still requires explicit owner approval.
+- [x] Final evidence docs committed as `e08597f` and released through main. Production `DqvmQVzjvKaKv26k1XtqdpJMgZmU` reached Ready, logged successful preparation, and passed public health; matching ticket Preview succeeded. Owner subsequently approved completion.
