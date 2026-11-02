@@ -1,6 +1,6 @@
 # Chronostasis
 
-Chronostasis is a mobile-first focus app foundation. Clerk sign-in and account persistence work locally; Focus and Inventory are placeholders. Timer and rewards are future work. The hosted build validates its Neon target, prepares Integration on an explicit redeploy, and prepares Production automatically; Vercel/Neon setup and hosted Integration migration/retry/failure/persistence acceptance are verified. Production release acceptance is tracked in the deployment runbook.
+Chronostasis is a mobile-first focus app foundation. Clerk sign-in and account persistence work locally; Focus and Inventory are placeholders. Timer and rewards are future work. The hosted build validates its Neon target, prepares Integration on an explicit redeploy, and prepares Production automatically; Vercel/Neon setup and hosted Integration migration/retry/failure/persistence acceptance are verified. Production preparation and signed-in persistence also passed after the owner corrected its Clerk secret; the deployment runbook records the evidence.
 
 ## Run locally
 

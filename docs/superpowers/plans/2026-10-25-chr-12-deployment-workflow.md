@@ -10,7 +10,7 @@
 
 **Spec:** [CHR-12 design](../specs/2026-10-25-chr-12-deployment-workflow-design.md).
 
-**Status:** Implementation and Integration acceptance are complete through `9186ea7`. Migration-only Preview triggering with unaffected-project skipping enabled, non-migrating ticket builds, additive application, retry stability, failure isolation, guarded cleanup, and signed-in Preview persistence were verified. Integration has four migrations, no probe table, two application users, and catalogue counts 3 items / 1 chest / 3 relationships. Production’s checked application schema is still uninitialized. The owner waived actual collaborator acceptance and authorized release through `main` on 2026-11-02. Production preparation/authentication/persistence and explicit ticket-completion approval remain pending. Full local verification and permitted independent bug/security follow-up reviews passed after recovery; dedicated reviewer types were unavailable.
+**Status:** CHR-12 source was released through `main` as `631d636` on 2026-11-02. Production preparation and retry passed; both databases have four migrations with digest `f02712c5bfe18967ae8eb5b1fe2a0741`, no probe table, and catalogue counts 3 items / 1 chest / 3 relationships. Integration retained two users. After the owner replaced the Production Clerk secret and redeployed, Production Account ready survived reload and its application user count became one. Migration-only triggering, non-migrating Previews, additive application, retry stability, failure isolation, cleanup, full local verification, and permitted independent bug/security follow-up reviews passed. Dedicated reviewer types were unavailable. Actual collaborator acceptance was explicitly waived. Final acceptance evidence is recorded below; explicit owner ticket-completion approval remains.
 
 ## Global Constraints
 
@@ -189,12 +189,22 @@
 **Commit hook input:** `record acceptance results`
 
 - [x] Reconcile spec, plan, runbook, README, architecture, and development guidance with the recovered migration set, observed acceptance, and collaborator waiver. Preserve historical failures as evidence.
-- [ ] Inspect and commit only the requested documentation; release the reviewed source through `main` after the fresh full local gate passes.
+- [x] Inspect and commit the six requested documentation files as `631d636`; release the reviewed source through `main` after the fresh full local gate passes.
 
 ## Hosted release and final acceptance (external actions)
 
 - [x] Persistent targets, environment scopes, target guards, Clerk DNS/certificates, manual Integration preparation, migration-only triggering, retry/failure isolation, cleanup, and Preview persistence verified; see runbook identifiers and owner SQL results.
 - Waived: actual collaborator push/PR/Preview eligibility and acceptance, by explicit owner request on 2026-11-02.
-- [ ] Fresh Production build from approved `main` source passes target validation, typecheck/build, migration and catalogue preparation. No Preview artifact promotion or hosted database credentials on a laptop.
-- [ ] Production has four migrations with digest `f02712c5bfe18967ae8eb5b1fe2a0741`, no probe, and catalogue counts 3/1/3. Verify Clerk Production sign-in and account persistence after reload; confirm Integration remains independent.
-- [ ] Explain implemented changes, daily development/migration/release flow, database contents, and Git/Neon Integration versus main to the owner before requesting explicit ticket-completion approval.
+- [x] Production deployment `BxV8dFxKXN9poKpkExXG4fiaqb9s` at `631d636` reached Ready; logs confirm `main`, Production typecheck/build and successful database preparation. Public page/health/redirect and unauthenticated 401 checks passed. No Preview artifact promotion or hosted database credentials on a laptop.
+- [x] Owner SQL confirms Production has four migrations with digest `f02712c5bfe18967ae8eb5b1fe2a0741`, no probe, and catalogue counts 3/1/3. Following secret correction and redeploy `6eBYY9A1hPZGg1tCXFPwPPPoBYxs`, Production Account ready survives reload and main has one application user. Integration retains two users and unchanged schema/catalogue counts.
+- [x] Explain implemented changes, daily development/migration/release flow, database contents, and Git/Neon Integration versus main to the owner.
+- [ ] Obtain explicit ticket-completion approval; release and unstaged-review approval do not imply completion approval.
+
+## Task 11: record Production acceptance
+
+**Prepared commit subject:** `[CHR-12] record production checks`
+
+**Commit hook input:** `record production checks`
+
+- [x] Record released source, successful Production preparation/retry, owner-entered Clerk secret correction, SQL schema/catalogue results, authenticated persistence and independent user counts. Reconcile README, architecture, runbook, spec and plan; validate documentation diff.
+- [ ] Commit the requested final evidence docs and fast-forward the approved main release with this documentation-only change; verify its deployment. Ticket completion still requires explicit owner approval.
