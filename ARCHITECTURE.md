@@ -4,7 +4,7 @@ Updated: 2026-11-02.
 
 ## Scope and deployment status
 
-Chronostasis is a mobile-first application foundation: a React client signs in with Clerk, calls a TypeScript API, and persists an application user and catalogue in PostgreSQL. Focus timing, chest opening, loot selection, and owned inventory are not implemented. The repository now contains a Vercel build runner for shared Integration and persistent Production Neon databases; hosted Integration migration/retry/failure/cleanup and authenticated persistence acceptance passed. Production preparation and authenticated persistence also passed on 2026-11-02; the deployment runbook records the evidence. PWA packaging and Capacitor/iOS packaging are future work.
+Chronostasis is a mobile-first application foundation: a React client signs in with Clerk, calls a TypeScript API, and persists application users, a loot catalogue, and a focus-session schema in PostgreSQL. Focus timing behavior, chest opening, loot selection, and owned inventory are not implemented. The repository now contains a Vercel build runner for shared Integration and persistent Production Neon databases; hosted Integration migration/retry/failure/cleanup and authenticated persistence acceptance passed. Production preparation and authenticated persistence also passed on 2026-11-02; the deployment runbook records the evidence. PWA packaging and Capacitor/iOS packaging are future work.
 
 ## Workspace
 
@@ -22,7 +22,7 @@ Workspace libraries emit declarations for TypeScript project references. Type-aw
 
 ## Local runtime and request flow
 
-`docker compose up --build -d --wait` starts the dependency initializer, PostgreSQL, database migration/seed initializer, local API, and Vite frontend in dependency order. Only the frontend is published to the host, bound to loopback; the API binds to `0.0.0.0` inside the private Compose network and its port is not published. Optional host-run API development defaults to `127.0.0.1` (`API_HOST`); the Compose service explicitly overrides it. Postgres uses a named volume. Source mounts support frontend/API hot reload, while a container-owned dependency volume and image-owned workspace symlinks keep host dependencies and `.env` out of application containers.
+`docker compose up --build -d --wait` starts the dependency initializer, PostgreSQL, database migration/seed initializer, local API, and Vite frontend in dependency order. The frontend is published to the host on loopback; PostgreSQL is also available on loopback at port 5433 by default, configurable with `POSTGRES_PORT`. The API binds to `0.0.0.0` inside the private Compose network and its port is not published. Optional host-run API development defaults to `127.0.0.1` (`API_HOST`); the Compose service explicitly overrides it. Postgres uses a named volume. Source mounts support frontend/API hot reload, while a container-owned dependency volume and image-owned workspace symlinks keep host dependencies and `.env` out of application containers. E2E runs request ephemeral host ports to avoid collisions with local services.
 
 The browser flow is:
 
@@ -54,14 +54,16 @@ The browser receives only the Clerk publishable key. Clerk's secret key is used 
 `0000_bootstrap.sql` creates:
 
 - `users`: UUID primary key, unique non-null Clerk subject, and timezone-aware creation/update timestamps.
-- `items`: stable text primary key and display name. The initial seed defines Rusty key, Copper ring, and Blue gem.
+- `items`: stable text primary key and display name. The seed defines Rusty key, Copper ring, Blue gem, and Red gem.
 
 `0001_chest_catalogue.sql` adds a normalized loot catalogue:
 
 - `chests`: stable text primary key and name. The initial seed adds `basic-chest` / Basic chest.
 - `chest_items`: foreign keys to `chests` and `items`, with a composite primary key `(chest_id, item_id)`.
 
-The seed upserts item and chest definitions and inserts missing eligibility links in one transaction. Additional chest types or links can be added without schema changes. The three item links describe eligible rewards, not chest contents: the future chest-opening flow is intended to award exactly one item. There is no owned-chest, opening-history, reward probability, focus-session, or inventory model yet.
+The seed upserts item and chest definitions and inserts missing eligibility links in one transaction. Additional chest types or links can be added without schema changes. The four item links describe eligible rewards, not chest contents: the future chest-opening flow is intended to award exactly one item. There is no owned-chest, opening-history, reward probability, or inventory model yet.
+
+`0004_focus_sessions.sql` adds `focus_sessions`, keyed by a generated UUID and linked to `users.id` with cascading user deletion. It stores status, planned duration in seconds, optional pause time, required start and end timestamps, and defaulted creation/update timestamps. Session behavior and API operations are not implemented yet.
 
 Database pools are bounded. Hosted connections require certificate verification; local Compose connections use the local non-TLS server. Runtime configuration prefers `DATABASE_URL`, then `NEON_DATABASE_URL` or `NEON_POSTGRES_URL`; migrations prefer `MIGRATION_DATABASE_URL`, then an explicit `DATABASE_URL`, then `NEON_DATABASE_URL_UNPOOLED` or `NEON_POSTGRES_URL_NON_POOLING`, and finally the selected runtime URL. These include the variable names supplied by Vercel's Neon integration with the `NEON_` prefix. Compose uses fixed local-only database credentials and destinations so a host environment variable cannot redirect initialization to another database.
 
