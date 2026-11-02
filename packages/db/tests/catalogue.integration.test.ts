@@ -16,7 +16,7 @@ afterAll(async () => {
 });
 
 describe('normalized chest catalogue', () => {
-  it('seeds one chest and three eligible item links without duplicating them', async () => {
+  it('seeds one chest and four eligible item links without duplicating them', async () => {
     await seedCatalogue(database);
     await seedCatalogue(database);
     expect(
@@ -32,8 +32,16 @@ describe('normalized chest catalogue', () => {
     ).toEqual([
       {chest_id: 'basic-chest', item_id: 'blue-gem'},
       {chest_id: 'basic-chest', item_id: 'copper-ring'},
+      {chest_id: 'basic-chest', item_id: 'red-gem'},
       {chest_id: 'basic-chest', item_id: 'rusty-key'},
     ]);
+    expect(
+      (
+        await database.orm.execute(
+          sql`select id, name from items where id = 'red-gem'`,
+        )
+      ).rows,
+    ).toEqual([{id: 'red-gem', name: 'Red gem'}]);
   });
   it('rejects duplicate eligibility pairs', async () => {
     await expect(

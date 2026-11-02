@@ -32,6 +32,7 @@ if (process.argv.length > 2 && !signedOutOnly) {
     const composeEnvironment = {
       ...process.env,
       E2E_RUN_MODE: signedOutOnly ? 'signed-out' : 'authenticated',
+      POSTGRES_PORT: '0',
       WEB_PORT: '0',
     };
     let testStatus = 1;

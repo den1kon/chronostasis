@@ -12,6 +12,7 @@ export async function seedCatalogue(
         {id: 'rusty-key', name: 'Rusty key'},
         {id: 'copper-ring', name: 'Copper ring'},
         {id: 'blue-gem', name: 'Blue gem'},
+        {id: 'red-gem', name: 'Red gem'},
       ])
       .onConflictDoUpdate({target: items.id, set: {name: sql`excluded.name`}});
     await transaction
@@ -24,6 +25,7 @@ export async function seedCatalogue(
         {chestId: 'basic-chest', itemId: 'rusty-key'},
         {chestId: 'basic-chest', itemId: 'copper-ring'},
         {chestId: 'basic-chest', itemId: 'blue-gem'},
+        {chestId: 'basic-chest', itemId: 'red-gem'},
       ])
       .onConflictDoNothing();
   });

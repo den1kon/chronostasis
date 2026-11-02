@@ -42,10 +42,15 @@ describe('serialized database preparation on Postgres', () => {
     expect(
       (
         await database.orm.execute(
-          sql`select id from items where id in ('blue-gem', 'copper-ring', 'rusty-key') order by id`,
+          sql`select id from items where id in ('blue-gem', 'copper-ring', 'red-gem', 'rusty-key') order by id`,
         )
       ).rows,
-    ).toEqual([{id: 'blue-gem'}, {id: 'copper-ring'}, {id: 'rusty-key'}]);
+    ).toEqual([
+      {id: 'blue-gem'},
+      {id: 'copper-ring'},
+      {id: 'red-gem'},
+      {id: 'rusty-key'},
+    ]);
     expect(
       (
         await database.orm.execute(
@@ -55,6 +60,7 @@ describe('serialized database preparation on Postgres', () => {
     ).toEqual([
       {item_id: 'blue-gem'},
       {item_id: 'copper-ring'},
+      {item_id: 'red-gem'},
       {item_id: 'rusty-key'},
     ]);
   });
@@ -193,6 +199,7 @@ describe('serialized database preparation on Postgres', () => {
     ).toEqual([
       {item_id: 'blue-gem'},
       {item_id: 'copper-ring'},
+      {item_id: 'red-gem'},
       {item_id: 'rusty-key'},
     ]);
   });
