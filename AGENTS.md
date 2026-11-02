@@ -20,6 +20,10 @@
 - Use only a commit subject; do not add a commit-message body. The user writes
   commit descriptions.
 - Do not create or open a pull request unless the user explicitly requests it.
+- Use `integration` as the default base branch for ticket branches and pull
+  requests unless the user explicitly specifies another base branch.
+- Push ticket changes on their ticket branch; do not push ticket changes
+  directly to `integration`.
 
 **Examples:**
 
