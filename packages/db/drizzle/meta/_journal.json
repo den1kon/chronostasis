@@ -15,6 +15,13 @@
       "when": 1792867423305,
       "tag": "0001_chest_catalogue",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793633425965,
+      "tag": "0002_chr12_preview_probe",
+      "breakpoints": true
     }
   ]
 }
