@@ -146,7 +146,7 @@
 **Commit hook input:** `record rollout checks`
 
 - [x] Recheck exact-version full local verification, remote heads, Production health/redirect, and hosted Preview persistence on 2026-11-02.
-- [ ] Obtain explicit unstaged-review approval for the four documentation files, inspect staged content, and commit only those files.
+- [x] Obtain explicit unstaged-review approval for the four documentation files, inspect staged content, and commit only those files as `4043738`.
 
 ## Task 7: test migration-only Preview deployment
 
@@ -154,10 +154,10 @@
 
 **Commit hook input:** `probe preview migrations`
 
-- [ ] Generate a custom Drizzle migration that creates an empty temporary `chr12_deployment_probe` table; SQL/metadata only, with no application schema/data changes.
-- [ ] Run the local migration/integration checks and full gate; obtain unstaged-review approval before committing.
-- [ ] Inspect the staged file list to ensure this commit contains only migration SQL/metadata. Push the ticket branch, verify unaffected-project skipping is enabled, and record the automatic Preview deployment. Confirm neither hosted database applies the new migration during the ticket Preview build.
-- [ ] With owner authorization, advance Git Integration to the reviewed commit and explicitly redeploy with the ignore step bypassed. Verify the table and new migration journal entry appear only in Neon Integration; retry and verify stable journal/catalogue counts.
+- [x] Generate custom Drizzle migration `0002_chr12_preview_probe` creating only the empty temporary probe table; ORM schema snapshot retains the same application tables.
+- [x] Run the exact-version full gate (174 unit, 21 integration, 38 hooks, four Playwright tests plus formatting/lint/typecheck/build), obtain clean permitted follow-up reviews and explicit unstaged-review approval, and commit as `a42e563`.
+- [x] Inspect the three staged migration files, deploy docs parent `4043738` first, then push migration-only `a42e563`. Owner screenshot confirms skipping enabled. Automatic Preview `GzzYFFfrhoxkcfKhtv77jcK8C653` completed; owner logs contain no database preparation. Integration baseline is unchanged, probe absent; Production catalog confirms the journal and all four app tables plus probe absent.
+- [x] With explicit owner approval, advance Git Integration to `a42e563`; its automatic entry `4BbXkzajxQtr8T4z3STb5sdcUXLy` canceled as intended. Owner explicitly redeployed and repeated preparation: probe exists with 0 rows, migrations 3, digest `0cb4b0803d797585cf79ff62ae21afe2`, users 2, items 3, chests 1, relationships 3 on both runs. Production journal and all five checked public relations remain absent. Successful explicit deployment URLs/log excerpts still need recording.
 
 ## Task 8: test hosted preparation failure isolation
 
@@ -165,7 +165,8 @@
 
 **Commit hook input:** `probe migration failure`
 
-- [ ] Prepare a separate custom migration that deliberately raises a fixed exception without changing application data. Obtain review before committing/pushing or applying it to Integration.
+- [x] Prepare custom migration `0003_chr12_failure_probe`, which raises a fixed exception without application writes. Disposable local Docker verification confirms nonzero preparation exit, unchanged three-migration journal/data snapshot, and released lock. Formatting/lint/typecheck, 174 unit tests, 38 hook tests, and build passed. The normal DB-integration/E2E suites were not rerun for this temporary broken fixture, which intentionally fails preparation; the full gate must pass after recovery.
+- [ ] Obtain unstaged-review approval and permitted clean follow-up reviews before committing/pushing the deliberate-failure fixture or applying it to Integration.
 - [ ] Verify ordinary ticket Preview still builds without preparing the database; an explicit Integration redeploy must fail preparation. Confirm no failed migration journal entry and no Production schema changes.
 - [ ] Remove the never-applied failing migration in a new reviewed recovery commit; do not rewrite pushed commits or applied migrations.
 
