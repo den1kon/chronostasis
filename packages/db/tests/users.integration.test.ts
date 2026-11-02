@@ -73,6 +73,7 @@ describe('real Postgres persistence', () => {
     expect(await database.orm.select().from(items).orderBy(items.id)).toEqual([
       {id: 'blue-gem', name: 'Blue gem'},
       {id: 'copper-ring', name: 'Copper ring'},
+      {id: 'red-gem', name: 'Red gem'},
       {id: 'rusty-key', name: 'Rusty key'},
     ]);
   });
