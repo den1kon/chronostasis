@@ -166,8 +166,8 @@
 **Commit hook input:** `probe migration failure`
 
 - [x] Prepare custom migration `0003_chr12_failure_probe`, which raises a fixed exception without application writes. Disposable local Docker verification confirms nonzero preparation exit, unchanged three-migration journal/data snapshot, and released lock. Formatting/lint/typecheck, 174 unit tests, 38 hook tests, and build passed. The normal DB-integration/E2E suites were not rerun for this temporary broken fixture, which intentionally fails preparation; the full gate must pass after recovery.
-- [ ] Obtain unstaged-review approval and permitted clean follow-up reviews before committing/pushing the deliberate-failure fixture or applying it to Integration.
-- [ ] Verify ordinary ticket Preview still builds without preparing the database; an explicit Integration redeploy must fail preparation. Confirm no failed migration journal entry and no Production schema changes.
+- [x] Obtain explicit unstaged-review approval and clean permitted follow-up bug/security reviews. Commit the five reviewed files as `e8bafe3` and push the ticket branch. Ordinary Preview `GD9FhhK5qT5njDTmC13HAFW9hgAZ` completed successfully. Advance Integration with owner approval; automatic deployment `CFwWfNLpZqX3dTmKT23q8xKAEsSB` canceled by the ignore step. Explicit failure application still pending.
+- [x] Ordinary ticket Preview completed; owner explicit Integration build log at `e8bafe3` confirms typecheck/build passed, database migration failed, and preparation exited 1, failing deployment. Post-failure journal remains 3/digest `0cb4b0803d797585cf79ff62ae21afe2`; app/probe counts unchanged. Production six checked relations remain absent. Owner confirmed Integration branch-alias health still returns `{"status":"ok"}` after failure. An application URL was supplied; the platform deployment ID was not supplied.
 - [ ] Remove the never-applied failing migration in a new reviewed recovery commit; do not rewrite pushed commits or applied migrations.
 
 ## Task 9: recover and remove test schema
@@ -176,7 +176,7 @@
 
 **Commit hook input:** `remove migration probes`
 
-- [ ] Generate a forward cleanup migration for the empty temporary probe table; confirm it contains no real application data before removal. Include recovery of the never-applied failure probe, tests, and related evidence updates.
+- [x] Owner confirmed probe has 0 rows before and after the failure test. Prepare forward cleanup `0003_chr12_cleanup_probe` with exclusive-lock/empty-table guard, and remove the never-applied failure SQL/snapshot/journal entry without rewriting commits or applied history. Local guard/retry verification passed, preserving a synthetic local user/catalogue data and prior hashes. Frozen install and full gate passed with Node24.20.0/pnpm10.34.7: formatting/lint/typecheck,174unit,21integration,38hooks,4Playwright,build. Do not stage before review.
 - [ ] Obtain unstaged-review approval, verify locally, commit/push, explicitly prepare Integration, and recheck persistence. Preserve applied migration history.
 - [ ] Coordinate collaborator `4elovel` pushing a reviewed change from their own account; record eligibility and successful non-migrating Preview behavior. The owner must arrange this action; no impersonation or unapproved messages/PR creation.
 - [ ] Present the final reviewed release state before requesting the owner's approval to merge/release through `main`.
