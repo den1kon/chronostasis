@@ -1,6 +1,6 @@
 # CHR-12: automatic database preparation for deployments
 
-Status: Tasks 1–3 are committed as `5a134a3`, `58049bb`, and `8436c71`. The approved Corepack preparation fix and rollout documentation were committed as `6bf3379` and pushed to the ticket and Integration branches. The full local gate passed after fixes on 2026-10-26. Permitted independent bug/security reviewer agents completed follow-up reviews with no remaining actionable findings; dedicated Bugbot/Security Review agent types were unavailable. Dashboard setup is recorded in the deployment runbook; Production secret verification and hosted runtime acceptance remain pending. The canonical application origin is `https://www.chronostasis.tech`, with a redirect from the bare domain; Clerk's authentication domain remains `clerk.chronostasis.tech`.
+Status: Tasks 1–3 are committed as `5a134a3`, `58049bb`, and `8436c71`. The approved Corepack preparation fix and rollout documentation were committed as `6bf3379` and pushed to the ticket and Integration branches. The full local gate passed after fixes on 2026-10-26. Permitted independent bug/security reviewer agents completed follow-up reviews with no remaining actionable findings; dedicated Bugbot/Security Review agent types were unavailable. Dashboard setup is recorded in the deployment runbook; Preview authenticated account persistence passed on redeploy `BksEByGDoXAni1fWdNCfpniMFxDg` at diagnostic commit `242f474` after the owner corrected its Clerk secret; `Account ready` remained after reload. Production runtime acceptance and the remaining migration experiments are pending. The canonical application origin is `https://www.chronostasis.tech`, with a redirect from the bare domain; Clerk's authentication domain remains `clerk.chronostasis.tech`.
 
 ## Intent
 
@@ -8,8 +8,8 @@ A contributor develops against Docker, pushes a ticket branch, and reviews a Ver
 
 ## Current state
 
-- `apps/web/vercel.json` invokes the repository deployment runner and ignored-build policy. The runner implementation is present but has not yet been exercised in Vercel.
-- The Neon integration is connected, but actual environment/branch settings still need verification. The intended model is one persistent Neon Integration branch shared by Vercel Previews, plus the persistent Production branch; automatic Neon branch-per-Preview must be disabled.
+- `apps/web/vercel.json` invokes the repository deployment runner and ignored-build policy. Ordinary ticket Preview builds and explicit Integration preparation were exercised in Vercel on 2026-10-26; the Production preparation path still needs hosted release acceptance.
+- The Neon environment/branch settings were inspected and configured on 2026-10-26, with persistent Preview targeting confirmed by the deployment guard. The intended model is one persistent Neon Integration branch shared by Vercel Previews, plus the persistent Production branch; automatic Neon branch-per-Preview must be disabled.
 - `packages/db/src/migrations.ts` applies committed Drizzle migrations. The catalogue seed upserts stable item/chest IDs and inserts missing relationships transactionally.
 - Local Compose already migrates and seeds its fixed local database. `pnpm build` and `pnpm verify:all` must remain usable without hosted credentials.
 - The API verifies Clerk bearer tokens and creates an application user through authenticated requests. Signing into Clerk alone does not insert a Neon user.

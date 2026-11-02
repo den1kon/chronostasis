@@ -10,7 +10,7 @@
 
 **Spec:** [CHR-12 design](../specs/2026-10-25-chr-12-deployment-workflow-design.md).
 
-**Status:** Tasks 1–3 are committed as `5a134a3`, `58049bb`, and `8436c71`. The approved Corepack preparation fix and rollout documentation were committed as `6bf3379` and pushed to the ticket and Integration branches. The full local gate passed after fixes on 2026-10-26. Both permitted independent reviewer agents completed follow-up reviews with no remaining actionable findings; dedicated Bugbot/Security Review agent types were unavailable. Vercel/Neon settings, Clerk DNS/certificates, and separate Clerk environment entries were configured through the dashboards. Production secret verification and hosted deployment acceptance remain pending; see the runbook's evidence table.
+**Status:** Tasks 1–3 are committed as `5a134a3`, `58049bb`, and `8436c71`. The approved Corepack preparation fix and rollout documentation were committed as `6bf3379` and pushed to the ticket and Integration branches. The full local gate passed after fixes on 2026-10-26. Both permitted independent reviewer agents completed follow-up reviews with no remaining actionable findings; dedicated Bugbot/Security Review agent types were unavailable. Vercel/Neon settings, Clerk DNS/certificates, and separate Clerk environment entries were configured through the dashboards. Preview authenticated persistence passed on 2026-10-26 after the owner corrected its Clerk secret. The full gate passed again on 2026-11-02 at `242f474`; hosted ticket Preview persistence also passed again after owner sign-in and browser reload. Remote heads confirm no CHR-12 release to `main`. Hosted migration experiments, collaborator acceptance, Production release/authentication, and explicit completion approval remain pending; see the runbook's evidence table.
 
 ## Global Constraints
 
@@ -123,7 +123,7 @@
 - [x] Prefix the root `db:prepare` script with `corepack` so its package dispatch uses the repository's pinned version, matching the existing build script.
 - [x] Repeat the frozen install and full local gate successfully, obtain unstaged-diff approval, inspect the five intended staged files, and commit as `6bf3379`. Both permitted independent follow-up reviewers found no actionable findings.
 - [x] Push `6bf3379` to the ticket and remote `integration` branches. Automatic Integration entry `CAYm2Q3cBXXdLAfpEATpWqR7j7da` canceled; explicit redeploy `3fFGN8z1V85GDAK6bPgGAEYWFRyK` reached Ready and logged `Database preparation complete.`
-- [ ] Repeat preparation for retry safety and complete the separate migration experiment. Hosted signed-in persistence still reports a session-refresh error after reload; investigate before acceptance.
+- [ ] Repeat preparation for retry safety and complete the separate migration experiment. The hosted session-refresh error was resolved through Task 5.
 
 ## Task 5: diagnose rejected hosted sessions
 
@@ -136,7 +136,49 @@
 - [x] Add focused regressions for recognized categories and arbitrary reason redaction; observe both fail before implementation and pass afterward.
 - [x] Run the full local verification gate: formatting, lint, typecheck, 174 unit tests, 21 database integration tests, 38 hook tests, four Playwright tests, and build passed. Owner completed unstaged review and approved committing/pushing the diagnostic after follow-up reviews pass.
 - [x] Complete permitted independent bug/security follow-up reviews; both reported no actionable findings. Dedicated reviewer types remain unavailable; existing general agents performed the reviews.
-- [ ] With owner approval, push the diagnostic ticket Preview, inspect the rejection category in Vercel runtime logs, fix the demonstrated cause, and repeat signed-in persistence acceptance.
+- [x] With owner approval, commit/push diagnostic `242f474` and verify Preview `2eZo9fStBAyMrEPZkW5KpmbrWkTT` is Ready. Runtime logs show `secret-key-invalid` for the reproduced 401.
+- [x] Owner replaced and saved the Preview-only Clerk secret using the Development instance key. Redeploy `BksEByGDoXAni1fWdNCfpniMFxDg` at `242f474` reached Ready. The ticket branch alias showed `Account ready` before and after a browser reload, confirming the UI initialize/read identity check. Credential entry/save was performed by the owner.
+
+## Task 6: save verified rollout evidence
+
+**Prepared commit subject:** `[CHR-12] record rollout checks`
+
+**Commit hook input:** `record rollout checks`
+
+- [x] Recheck exact-version full local verification, remote heads, Production health/redirect, and hosted Preview persistence on 2026-11-02.
+- [ ] Obtain explicit unstaged-review approval for the four documentation files, inspect staged content, and commit only those files.
+
+## Task 7: test migration-only Preview deployment
+
+**Prepared commit subject:** `[CHR-12] probe preview migrations`
+
+**Commit hook input:** `probe preview migrations`
+
+- [ ] Generate a custom Drizzle migration that creates an empty temporary `chr12_deployment_probe` table; SQL/metadata only, with no application schema/data changes.
+- [ ] Run the local migration/integration checks and full gate; obtain unstaged-review approval before committing.
+- [ ] Inspect the staged file list to ensure this commit contains only migration SQL/metadata. Push the ticket branch, verify unaffected-project skipping is enabled, and record the automatic Preview deployment. Confirm neither hosted database applies the new migration during the ticket Preview build.
+- [ ] With owner authorization, advance Git Integration to the reviewed commit and explicitly redeploy with the ignore step bypassed. Verify the table and new migration journal entry appear only in Neon Integration; retry and verify stable journal/catalogue counts.
+
+## Task 8: test hosted preparation failure isolation
+
+**Prepared commit subject:** `[CHR-12] probe migration failure`
+
+**Commit hook input:** `probe migration failure`
+
+- [ ] Prepare a separate custom migration that deliberately raises a fixed exception without changing application data. Obtain review before committing/pushing or applying it to Integration.
+- [ ] Verify ordinary ticket Preview still builds without preparing the database; an explicit Integration redeploy must fail preparation. Confirm no failed migration journal entry and no Production schema changes.
+- [ ] Remove the never-applied failing migration in a new reviewed recovery commit; do not rewrite pushed commits or applied migrations.
+
+## Task 9: recover and remove test schema
+
+**Prepared commit subject:** `[CHR-12] remove migration probes`
+
+**Commit hook input:** `remove migration probes`
+
+- [ ] Generate a forward cleanup migration for the empty temporary probe table; confirm it contains no real application data before removal. Include recovery of the never-applied failure probe, tests, and related evidence updates.
+- [ ] Obtain unstaged-review approval, verify locally, commit/push, explicitly prepare Integration, and recheck persistence. Preserve applied migration history.
+- [ ] Coordinate collaborator `4elovel` pushing a reviewed change from their own account; record eligibility and successful non-migrating Preview behavior. The owner must arrange this action; no impersonation or unapproved messages/PR creation.
+- [ ] Present the final reviewed release state before requesting the owner's approval to merge/release through `main`.
 
 ## Hosted rollout and acceptance (external evidence, not an extra Git commit)
 
@@ -144,7 +186,7 @@
 - [ ] Owner verifies the Production Clerk secret; verify both environment key triplets through authenticated deployments. Preview secret presence/scope is confirmed, not its hidden value.
 - [ ] Owner confirms the runbook's external settings, including collaborator eligibility, Neon default branch set to Integration, configured Production branch, shared Preview target, disabled branch-per-Preview provisioning, both markers, ignored-build rule, manual integration-branch redeploy action, and Clerk setup. Do not silently change account plans or domains.
 - [ ] Deploy a feature Preview and verify it connects to the persistent Integration branch without running database preparation. Record deployment identifier and safe Integration endpoint identity. Verify health and authenticated UI user persistence in the shared database.
-  - First owner attempt: pushed committed CHR-12 head `8436c71`; Vercel deployment `DTynKq74EbuF3cp9eHdE4QW97SoU` failed the Integration hostname guard before child stages or database preparation. Investigate saved guard values and injected Preview credentials before retrying. Default-branch selection alone is not evidence of connection retargeting. After scoping the managed connection to Production and owner entry of explicit Preview URLs, retry `AMFWvzgekiyDShKQL7MsFAjT4kQg` reached Ready, passed target validation, ran typecheck/build without preparation, and displayed Clerk Development sign-in. Browser `/api/health` returned `{"status":"ok"}` with `cache-control: no-store`. Authenticated persistence and actual collaborator acceptance remain pending.
+  - First owner attempt: pushed committed CHR-12 head `8436c71`; Vercel deployment `DTynKq74EbuF3cp9eHdE4QW97SoU` failed the Integration hostname guard before child stages or database preparation. Investigate saved guard values and injected Preview credentials before retrying. Default-branch selection alone is not evidence of connection retargeting. After scoping the managed connection to Production and owner entry of explicit Preview URLs, retry `AMFWvzgekiyDShKQL7MsFAjT4kQg` reached Ready, passed target validation, ran typecheck/build without preparation, and displayed Clerk Development sign-in. Browser `/api/health` returned `{"status":"ok"}` with `cache-control: no-store`. Authenticated persistence subsequently passed on `BksEByGDoXAni1fWdNCfpniMFxDg` after the owner corrected the Preview Clerk secret. Actual collaborator acceptance remains pending.
 - [ ] With Vercel's Skip deployments setting enabled, push an owner-authorized feature-branch commit containing only a harmless additive migration, with no application, catalogue, or configuration edits. Verify Vercel automatically creates and builds its Preview rather than skipping it as unaffected. Record the commit SHA, migration path, and deployment ID; confirm neither database changes because feature Previews do not prepare databases. If skipped, investigate workspace dependency detection and disable the setting as a fallback before repeating the check.
 - [ ] Explicitly redeploy the integration-branch commit and inspect named preparation stages. Record deployment/commit identifier and Neon Integration branch identifier. Verify schema/data changes there, while Production remains unchanged.
 - [ ] After owner-approved merge to `main`, verify initial production migration/catalogue setup without any production URLs on a laptop. Retain existing application users; check authenticated UI/network behavior on the supported main origin.
