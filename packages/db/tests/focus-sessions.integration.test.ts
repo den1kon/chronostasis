@@ -38,14 +38,9 @@ describe('focus sessions migration', () => {
       {column_name: 'user_id', data_type: 'uuid', is_nullable: 'NO'},
       {column_name: 'status', data_type: 'text', is_nullable: 'NO'},
       {
-        column_name: 'planned_duration',
+        column_name: 'planned_duration_seconds',
         data_type: 'integer',
         is_nullable: 'NO',
-      },
-      {
-        column_name: 'paused_at',
-        data_type: 'timestamp with time zone',
-        is_nullable: 'YES',
       },
       {
         column_name: 'started_at',
@@ -55,7 +50,7 @@ describe('focus sessions migration', () => {
       {
         column_name: 'ended_at',
         data_type: 'timestamp with time zone',
-        is_nullable: 'NO',
+        is_nullable: 'YES',
       },
       {
         column_name: 'created_at',
@@ -75,7 +70,7 @@ describe('focus sessions migration', () => {
     const timestamp = new Date();
     await database.orm.execute(sql`
       insert into focus_sessions (
-        id, user_id, status, planned_duration, started_at, ended_at
+        id, user_id, status, planned_duration_seconds, started_at, ended_at
       ) values (
         ${sessionId}, ${userId}, 'completed', 1500, ${timestamp}, ${timestamp}
       )
@@ -83,10 +78,16 @@ describe('focus sessions migration', () => {
     expect(
       (
         await database.orm.execute(
-          sql`select user_id, status, planned_duration from focus_sessions where id = ${sessionId}`,
+          sql`select user_id, status, planned_duration_seconds from focus_sessions where id = ${sessionId}`,
         )
       ).rows,
-    ).toEqual([{user_id: userId, status: 'completed', planned_duration: 1500}]);
+    ).toEqual([
+      {
+        user_id: userId,
+        status: 'completed',
+        planned_duration_seconds: 1500,
+      },
+    ]);
     await database.orm.execute(
       sql`delete from focus_sessions where id = ${sessionId}`,
     );
@@ -96,9 +97,9 @@ describe('focus sessions migration', () => {
     await expect(
       database.orm.execute(sql`
         insert into focus_sessions (
-          id, user_id, status, planned_duration, started_at, ended_at
+          id, user_id, status, planned_duration_seconds, started_at, ended_at
         ) values (
-          ${randomUUID()}, ${randomUUID()}, 'running', 1500, now(), now()
+          ${randomUUID()}, ${randomUUID()}, 'running', 1500, now(), null
         )
       `),
     ).rejects.toMatchObject({cause: {code: '23503'}});

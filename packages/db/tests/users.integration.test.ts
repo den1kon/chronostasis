@@ -5,7 +5,7 @@ import {PublicUserSchema} from '@chronostasis/contracts';
 import {createDatabase} from '../src/client';
 import {readTestDatabaseUrl} from '../src/env';
 import {migrateDatabase} from '../src/migrations';
-import {items, users} from '../src/schema';
+import {items, userItems, users} from '../src/schema';
 import {seedCatalogue} from '../src/seeding';
 import {createUserRepository} from '../src/users';
 
@@ -21,6 +21,7 @@ function subject() {
 
 beforeAll(async () => {
   await migrateDatabase(database);
+  await seedCatalogue(database);
 });
 afterAll(async () => {
   try {
@@ -47,15 +48,31 @@ describe('real Postgres persistence', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.createdAt).toBeInstanceOf(Date);
     expect(rows[0]?.updatedAt).toBeInstanceOf(Date);
+    const ownedItems = await database.orm
+      .select()
+      .from(userItems)
+      .where(eq(userItems.userId, first.id));
+    expect(ownedItems).toHaveLength(1);
+    expect(ownedItems[0]?.itemId).toBe('red-gem');
+    expect(ownedItems[0]?.sessionId).toBeNull();
   });
   it('creates exactly one row under concurrent initialization', async () => {
     const id = subject();
     const results = await Promise.all(
       Array.from({length: 12}, () => repository.ensureUser(id)),
     );
+    const firstResult = results[0];
+    if (!firstResult)
+      throw new Error('User initialization returned no result.');
     expect(new Set(results.map(user => user.id)).size).toBe(1);
     expect(
       await database.orm.select().from(users).where(eq(users.clerkUserId, id)),
+    ).toHaveLength(1);
+    expect(
+      await database.orm
+        .select()
+        .from(userItems)
+        .where(eq(userItems.userId, firstResult.id)),
     ).toHaveLength(1);
   });
   it('keeps different Clerk subjects separate', async () => {
@@ -70,7 +87,12 @@ describe('real Postgres persistence', () => {
     await seedCatalogue(database);
     await migrateDatabase(database);
     await seedCatalogue(database);
-    expect(await database.orm.select().from(items).orderBy(items.id)).toEqual([
+    expect(
+      await database.orm
+        .select({id: items.id, name: items.name})
+        .from(items)
+        .orderBy(items.id),
+    ).toEqual([
       {id: 'blue-gem', name: 'Blue gem'},
       {id: 'copper-ring', name: 'Copper ring'},
       {id: 'red-gem', name: 'Red gem'},
