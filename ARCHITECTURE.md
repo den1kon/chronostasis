@@ -1,10 +1,10 @@
 # Chronostasis architecture
 
-Updated: 2026-11-02.
+Updated: 2026-11-03.
 
 ## Scope and deployment status
 
-Chronostasis is a mobile-first application foundation: a React client signs in with Clerk, calls a TypeScript API, and persists application users, a loot catalogue, and a focus-session schema in PostgreSQL. Focus timing behavior, chest opening, loot selection, and owned inventory are not implemented. The repository now contains a Vercel build runner for shared Integration and persistent Production Neon databases; hosted Integration migration/retry/failure/cleanup and authenticated persistence acceptance passed. Production preparation and authenticated persistence also passed on 2026-11-02; the deployment runbook records the evidence. PWA packaging and Capacitor/iOS packaging are future work.
+Chronostasis is a mobile-first application foundation: a React client signs in with Clerk, calls a TypeScript API, and persists application users, a loot catalogue, focus sessions, unlocked chest types, and owned item copies in PostgreSQL. Focus timing behavior, chest purchasing/opening, reward selection, and inventory APIs are not implemented. The repository now contains a Vercel build runner for shared Integration and persistent Production Neon databases; hosted Integration migration/retry/failure/cleanup and authenticated persistence acceptance passed. Production preparation and authenticated persistence also passed on 2026-11-02; the deployment runbook records the evidence. PWA packaging and Capacitor/iOS packaging are future work.
 
 ## Workspace
 
@@ -51,19 +51,13 @@ The browser receives only the Clerk publishable key. Clerk's secret key is used 
 
 ## Data model
 
-`0000_bootstrap.sql` creates:
+`0000_bootstrap.sql` creates `users` and `items`; `0001_chest_catalogue.sql` adds `chests` and the normalized `chest_items` eligibility junction. `0004_focus_sessions.sql` adds `focus_sessions`, and `0005_chr15_full_database_schema.sql` completes the application schema with coins, item/chest descriptions and sprite coordinates, weighted chest eligibility, permanent user chest unlocks, and user-owned item copies.
 
-- `users`: UUID primary key, unique non-null Clerk subject, and timezone-aware creation/update timestamps.
-- `items`: stable text primary key and display name. The seed defines Rusty key, Copper ring, Blue gem, and Red gem.
+`items.rarity` is constrained to common, rare, epic, legendary, and mythic. Rarity roll chances are shared backend rules rather than database records; `chest_items.weight` controls relative selection among eligible items of the selected rarity. Sprite coordinates are zero-based 16×16 cells; the client maps them to its sprite sheet.
 
-`0001_chest_catalogue.sql` adds a normalized loot catalogue:
+The transactional catalogue seed upserts four items and one `basic-chest`, and links three eligible items to that chest. `red-gem` is reserved as the welcome item and is not in the chest pool. When a new application user is initialized, the user row and its welcome `user_items` copy are created atomically; repeated initialization does not grant another copy. `user_chests` records permanent access to a chest type. Purchase and chest-opening flows, reward selection, and inventory APIs are not implemented yet.
 
-- `chests`: stable text primary key and name. The initial seed adds `basic-chest` / Basic chest.
-- `chest_items`: foreign keys to `chests` and `items`, with a composite primary key `(chest_id, item_id)`.
-
-The seed upserts item and chest definitions and inserts missing eligibility links in one transaction. Additional chest types or links can be added without schema changes. The four item links describe eligible rewards, not chest contents: the future chest-opening flow is intended to award exactly one item. There is no owned-chest, opening-history, reward probability, or inventory model yet.
-
-`0004_focus_sessions.sql` adds `focus_sessions`, keyed by a generated UUID and linked to `users.id` with cascading user deletion. It stores status, planned duration in seconds, optional pause time, required start and end timestamps, and defaulted creation/update timestamps. Session behavior and API operations are not implemented yet.
+Focus sessions store `running`, `cancelled`, or `completed` status, a planned duration from 15 to 180 minutes in five-minute increments, and start/end timestamps. Pauses are client-side and are not stored. Session behavior and API operations are not implemented yet.
 
 Database pools are bounded. Hosted connections require certificate verification; local Compose connections use the local non-TLS server. Runtime configuration prefers `DATABASE_URL`, then `NEON_DATABASE_URL` or `NEON_POSTGRES_URL`; migrations prefer `MIGRATION_DATABASE_URL`, then an explicit `DATABASE_URL`, then `NEON_DATABASE_URL_UNPOOLED` or `NEON_POSTGRES_URL_NON_POOLING`, and finally the selected runtime URL. These include the variable names supplied by Vercel's Neon integration with the `NEON_` prefix. Compose uses fixed local-only database credentials and destinations so a host environment variable cannot redirect initialization to another database.
 
