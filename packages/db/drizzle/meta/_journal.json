@@ -36,6 +36,13 @@
       "when": 1793645666849,
       "tag": "0004_focus_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793730485566,
+      "tag": "0005_chr15_full_database_schema",
+      "breakpoints": true
     }
   ]
 }

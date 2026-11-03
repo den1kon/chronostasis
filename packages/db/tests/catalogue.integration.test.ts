@@ -16,7 +16,7 @@ afterAll(async () => {
 });
 
 describe('normalized chest catalogue', () => {
-  it('seeds one chest and four eligible item links without duplicating them', async () => {
+  it('seeds one chest and three eligible item links without duplicating them', async () => {
     await seedCatalogue(database);
     await seedCatalogue(database);
     expect(
@@ -32,7 +32,6 @@ describe('normalized chest catalogue', () => {
     ).toEqual([
       {chest_id: 'basic-chest', item_id: 'blue-gem'},
       {chest_id: 'basic-chest', item_id: 'copper-ring'},
-      {chest_id: 'basic-chest', item_id: 'red-gem'},
       {chest_id: 'basic-chest', item_id: 'rusty-key'},
     ]);
     expect(
@@ -78,7 +77,7 @@ describe('normalized chest catalogue', () => {
     const id = `extra-${randomUUID()}`;
     try {
       await database.orm.execute(
-        sql`insert into chests (id, name) values (${id}, 'Another chest')`,
+        sql`insert into chests (id, name, price, sprite_x, sprite_y) values (${id}, 'Another chest', 100, 0, 0)`,
       );
       await database.orm.execute(
         sql`insert into chest_items (chest_id, item_id) values (${id}, 'rusty-key')`,

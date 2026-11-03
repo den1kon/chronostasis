@@ -13,7 +13,7 @@ docker compose up --build -d --wait
 
 Open [http://localhost:5173](http://localhost:5173). Include that origin in `CLERK_AUTHORIZED_PARTIES`. If port 5173 is busy, set `WEB_PORT=5174` and add `http://localhost:5174` to the allowed parties.
 
-Compose starts dependency installation and PostgreSQL first, then migrations/seeds, the API, and the frontend. Requests flow browser → Vite frontend → `/api` proxy → authenticated Node API → PostgreSQL. Clerk verifies the signed-in user before the API reads or writes that user's record.
+Compose starts dependency installation and PostgreSQL first, then migrations/catalogue seeds, the API, and the frontend. Requests flow browser → Vite frontend → `/api` proxy → authenticated Node API → PostgreSQL. Clerk verifies the signed-in user before the API reads or writes that user's record. First-time application-user initialization also grants one welcome item atomically.
 
 ### What Compose runs
 
@@ -52,7 +52,7 @@ pnpm hooks:install
 
 The pre-commit hook runs GTS checks on staged files; the commit-message hook adds or validates the ticket prefix. Use `pnpm format:check` to check formatting and `pnpm format:fix` to apply GTS formatting and automatic fixes.
 
-The main workspaces are `apps/web` (React/Vite), `apps/api` (local Node server), `packages/api` (auth and shared handlers), `packages/contracts` (public schemas), and `packages/db` (Drizzle schema, migrations, and seeds). For schema changes, edit the Drizzle schema, run `pnpm db:generate --name add_focus_session`, then review and commit the generated migration with the schema change. Compose applies migrations and seeds on startup. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup, Docker service roles, database workflow, and commands.
+The main workspaces are `apps/web` (React/Vite), `apps/api` (local Node server), `packages/api` (auth and shared handlers), `packages/contracts` (public schemas), and `packages/db` (Drizzle schema, migrations, and seeds). For schema changes, edit the Drizzle schema, run `pnpm db:generate --name add_focus_session`, then review and commit the generated migration with the schema change. Compose applies migrations and catalogue seeds on startup. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup, Docker service roles, database workflow, and commands.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for runtime/data boundaries and the [design spec](docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md) for detailed requirements.
 

@@ -60,7 +60,6 @@ describe('serialized database preparation on Postgres', () => {
     ).toEqual([
       {item_id: 'blue-gem'},
       {item_id: 'copper-ring'},
-      {item_id: 'red-gem'},
       {item_id: 'rusty-key'},
     ]);
   });
@@ -71,10 +70,20 @@ describe('serialized database preparation on Postgres', () => {
     const itemId = `extra-${randomUUID()}`;
     try {
       await database.orm.insert(users).values({clerkUserId: userId});
-      await database.orm
-        .insert(chests)
-        .values({id: chestId, name: 'Extra chest'});
-      await database.orm.insert(items).values({id: itemId, name: 'Extra item'});
+      await database.orm.insert(chests).values({
+        id: chestId,
+        name: 'Extra chest',
+        price: 100,
+        spriteX: 0,
+        spriteY: 0,
+      });
+      await database.orm.insert(items).values({
+        id: itemId,
+        name: 'Extra item',
+        rarity: 'common',
+        spriteX: 0,
+        spriteY: 0,
+      });
       await database.orm.insert(chestItems).values({chestId, itemId});
 
       await prepareDatabase(connectionString);
@@ -199,7 +208,6 @@ describe('serialized database preparation on Postgres', () => {
     ).toEqual([
       {item_id: 'blue-gem'},
       {item_id: 'copper-ring'},
-      {item_id: 'red-gem'},
       {item_id: 'rusty-key'},
     ]);
   });
