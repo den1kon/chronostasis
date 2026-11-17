@@ -137,6 +137,40 @@ it('guards the provenance upgrade, backfills welcome copies, and supports legacy
         );
       }
 
+      // A previously used catalogue ID must not be repurposed as a creation grant.
+      await database.orm.execute(sql`
+        insert into items (id, name, rarity, sprite_x, sprite_y)
+        values ('creation-token', 'Custom item', 'rare', 0, 1)
+      `);
+      await database.orm.execute(sql`
+        insert into chests (id, name, price, sprite_x, sprite_y)
+        values ('custom-chest', 'Custom chest', 0, 0, 1)
+      `);
+      await database.orm.execute(sql`
+        insert into chest_items (chest_id, item_id)
+        values ('custom-chest', 'creation-token')
+      `);
+      await expect(prepareDatabase(isolatedUrl.toString())).rejects.toThrow(
+        'CHR-24 requires the creation-token catalogue ID to be unused.',
+      );
+      await expect(
+        database.orm.execute(sql`
+        select count(*)::integer as count from drizzle.__drizzle_migrations
+      `),
+      ).resolves.toMatchObject({rows: [{count: journal.entries.length}]});
+      await expect(
+        database.orm.execute(sql`
+        select items.name from items join chest_items on chest_items.item_id = items.id
+        where items.id = 'creation-token' and chest_items.chest_id = 'custom-chest'
+      `),
+      ).resolves.toMatchObject({rows: [{name: 'Custom item'}]});
+      await database.orm.execute(
+        sql`delete from chest_items where item_id = 'creation-token'`,
+      );
+      await database.orm.execute(
+        sql`delete from items where id = 'creation-token'`,
+      );
+
       await migrateDatabase(database);
       await migrateDatabase(database);
       await expect(
@@ -180,7 +214,7 @@ it('guards the provenance upgrade, backfills welcome copies, and supports legacy
       ).resolves.toMatchObject({
         rows: [
           {
-            item_id: 'red-gem',
+            item_id: 'creation-token',
             session_id: null,
             acquisition_source: 'account_creation',
             is_verified: true,

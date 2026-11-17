@@ -26,6 +26,8 @@ export function migrationPreconditionMessage(
       return 'CHR-24 requires an empty focus_sessions table.';
     case 'P2402':
       return 'CHR-24 found inventory with unrecognized legacy provenance.';
+    case 'P2403':
+      return 'CHR-24 requires the creation-token catalogue ID to be unused.';
     default:
       return undefined;
   }

@@ -1,6 +1,8 @@
 import {sql} from 'drizzle-orm';
-import type {DatabaseOperations} from './client';
-import {chestItems, chests, items} from './schema';
+import type {DatabaseOperations} from './client.js';
+import {chestItems, chests, items} from './schema.js';
+
+export const creationTokenId = 'creation-token';
 
 export async function seedCatalogue(
   database: DatabaseOperations,
@@ -35,6 +37,13 @@ export async function seedCatalogue(
           name: 'Red gem',
           rarity: 'common',
           spriteX: 3,
+          spriteY: 0,
+        },
+        {
+          id: creationTokenId,
+          name: 'Token of Creation',
+          rarity: 'common',
+          spriteX: 4,
           spriteY: 0,
         },
       ])

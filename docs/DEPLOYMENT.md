@@ -33,7 +33,7 @@ Integration and Production are separate Neon branches. Application code and comm
 
 ## What each database contains
 
-The application schema stores Clerk-linked users, the item and chest catalogue, chest reward eligibility, user chest unlocks, and session and inventory provenance. The catalogue contains Rusty key, Copper ring, Blue gem, Red gem, and Basic chest. Basic chest has three eligible items. Account initialization grants its verified welcome item separately. The migration journal records applied migrations.
+The application schema stores Clerk-linked users, the item and chest catalogue, chest reward eligibility, user chest unlocks, and session and inventory provenance. The catalogue contains Rusty key, Copper ring, Blue gem, the legacy Red gem, the Token of Creation, and Basic chest. Basic chest has three eligible items. Account initialization grants its token separately. The migration journal records applied migrations.
 
 After the CHR-12 acceptance cleanup, Integration had four journal entries, no `chr12_deployment_probe`, two application users, and the 3/1/3 catalogue counts. Production had none of the checked application tables before release. Its first preparation creates the same schema and reference catalogue independently; application users appear when the Production UI successfully initializes an authenticated account. Clerk Development identities and Integration rows are not copied into Production.
 
@@ -106,7 +106,7 @@ Database preparation waits up to 60 seconds for a session advisory lock on one d
 
 Before deploying CHR-24, confirm that any deployment still accepting account writes on the target database runs CHR-15 or later. Release CHR-15 first if the active version creates users without a welcome item, and protect or retire older deployments that can still write to the same database. Verify that `focus_sessions` is empty and that existing inventory consists of at most one session-less legacy Red gem per user. Migration `0006` stops with a CHR-24 diagnostic if either check fails.
 
-Migration `0006` supports CHR-15's welcome insert during preparation, publication, and rollback. It records that insert as a verified account-creation item.
+Migrations `0006` and `0007` support CHR-15's account write during preparation, publication, and rollback. Migration `0007` reserves the previously unused `creation-token` catalogue ID and makes the token available in the same transaction as the schema change. If a custom catalogue entry already uses that ID, preparation stops and preserves the existing item and its chest links. While CHR-15 remains active, its welcome insert creates one verified token. Once CHR-24 is active, its repository writes the provenance explicitly. Keep compatibility on rollback targets to preserve account initialization.
 
 ## Diagnostics and recovery
 

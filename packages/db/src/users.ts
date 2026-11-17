@@ -2,6 +2,7 @@ import type {PublicUser} from '@chronostasis/contracts';
 import {eq, sql} from 'drizzle-orm';
 import type {Database} from './client.js';
 import {userItems, users} from './schema.js';
+import {creationTokenId} from './seeding.js';
 
 function requireIdentity(clerkUserId: string): void {
   if (!clerkUserId.trim()) throw new Error('Clerk user ID is required.');
@@ -10,7 +11,7 @@ function requireIdentity(clerkUserId: string): void {
 export function createUserRepository(database: Database) {
   const publicFields = {id: users.id, clerkUserId: users.clerkUserId};
   return {
-    // Award the welcome copy atomically, only when the application user is new.
+    // Grant the creation token in the same transaction as the new application user.
     async ensureUser(clerkUserId: string): Promise<PublicUser> {
       requireIdentity(clerkUserId);
       return database.orm.transaction(async transaction => {
@@ -23,7 +24,8 @@ export function createUserRepository(database: Database) {
         if (newUser) {
           await transaction.insert(userItems).values({
             userId: newUser.id,
-            itemId: 'red-gem',
+            itemId: creationTokenId,
+            sessionId: null,
             acquisitionSource: 'account_creation',
             isVerified: true,
           });

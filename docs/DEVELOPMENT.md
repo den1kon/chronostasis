@@ -63,7 +63,7 @@ pnpm test:integration
 
 Commit a migration with the schema change. Compose applies pending migrations and seeds when its `db-init` service starts. Integration tests create and remove their own Compose project and database volume; they do not reset the development database.
 
-`pnpm db:prepare` is the combined migration-and-catalogue command used by the hosted deployment runner. It applies pending migrations, seeds the required catalogue, and serializes both operations on one direct PostgreSQL connection. The catalogue seed creates the basic chest, three eligible rewards, and a separate welcome item. First-time user initialization grants the welcome item in the same transaction that creates the user. Local Compose keeps its existing `db-init` startup flow; do not run `db:prepare` against a hosted database from a laptop.
+`pnpm db:prepare` is the combined migration-and-catalogue command used by the hosted deployment runner. It applies pending migrations, seeds the required catalogue, and serializes both operations on one direct PostgreSQL connection. The catalogue seed creates the basic chest, three eligible rewards, and the Token of Creation outside the reward pool. First-time user initialization grants one verified token in the same transaction that creates the user. Existing users keep their verified legacy welcome copies. Local Compose keeps its existing `db-init` startup flow; do not run `db:prepare` against a hosted database from a laptop.
 
 ### Vercel database workflow
 
