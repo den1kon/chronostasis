@@ -24,6 +24,8 @@ export function createUserRepository(database: Database) {
           await transaction.insert(userItems).values({
             userId: newUser.id,
             itemId: 'red-gem',
+            acquisitionSource: 'account_creation',
+            isVerified: true,
           });
           return newUser;
         }

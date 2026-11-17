@@ -43,6 +43,13 @@
       "when": 1793730485566,
       "tag": "0005_chr15_full_database_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794940375213,
+      "tag": "0006_chr24_session_provenance",
+      "breakpoints": true
     }
   ]
 }

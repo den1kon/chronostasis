@@ -4,12 +4,14 @@ import {sql} from 'drizzle-orm';
 import {createDatabase} from '../src/client';
 import {readTestDatabaseUrl} from '../src/env';
 import {migrateDatabase} from '../src/migrations';
+import {seedCatalogue} from '../src/seeding';
 
 const database = createDatabase(readTestDatabaseUrl(process.env));
 const userId = randomUUID();
 
 beforeAll(async () => {
   await migrateDatabase(database);
+  await seedCatalogue(database);
   await database.orm.execute(
     sql`insert into users (id, clerk_user_id) values (${userId}, ${`focus-session-${userId}`})`,
   );
@@ -62,6 +64,8 @@ describe('focus sessions migration', () => {
         data_type: 'timestamp with time zone',
         is_nullable: 'NO',
       },
+      {column_name: 'chest_id', data_type: 'text', is_nullable: 'NO'},
+      {column_name: 'origin', data_type: 'text', is_nullable: 'NO'},
     ]);
   });
 
@@ -70,9 +74,9 @@ describe('focus sessions migration', () => {
     const timestamp = new Date();
     await database.orm.execute(sql`
       insert into focus_sessions (
-        id, user_id, status, planned_duration_seconds, started_at, ended_at
+        id, user_id, chest_id, status, planned_duration_seconds, started_at, ended_at
       ) values (
-        ${sessionId}, ${userId}, 'completed', 1500, ${timestamp}, ${timestamp}
+        ${sessionId}, ${userId}, 'basic-chest', 'completed', 1500, ${timestamp}, ${timestamp}
       )
     `);
     expect(
@@ -97,9 +101,9 @@ describe('focus sessions migration', () => {
     await expect(
       database.orm.execute(sql`
         insert into focus_sessions (
-          id, user_id, status, planned_duration_seconds, started_at, ended_at
+          id, user_id, chest_id, status, planned_duration_seconds, started_at, ended_at
         ) values (
-          ${randomUUID()}, ${randomUUID()}, 'running', 1500, now(), null
+          ${randomUUID()}, ${randomUUID()}, 'basic-chest', 'running', 1500, now(), null
         )
       `),
     ).rejects.toMatchObject({cause: {code: '23503'}});

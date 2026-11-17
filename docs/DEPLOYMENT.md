@@ -33,9 +33,9 @@ Integration and Production are separate Neon branches. Application code and comm
 
 ## What each database contains
 
-The application schema has `users` (application UUID, unique Clerk subject, timestamps), `items` and `chests` (reference definitions), and `chest_items` (foreign-key relationships with a composite primary key). `drizzle.__drizzle_migrations` tracks applied migration hashes; it is not application data. The seed supplies Rusty key, Copper ring, Blue gem, Basic chest, and the three chest/item links. It does not create users, rewards, or owned inventory.
+The application schema stores Clerk-linked users, the item and chest catalogue, chest reward eligibility, user chest unlocks, and session and inventory provenance. The catalogue contains Rusty key, Copper ring, Blue gem, Red gem, and Basic chest. Basic chest has three eligible items. Account initialization grants its verified welcome item separately. The migration journal records applied migrations.
 
-After the acceptance cleanup, Integration has four journal entries, no `chr12_deployment_probe`, two application users, and the 3/1/3 catalogue counts. Production had none of the checked application tables before release. Its first preparation creates the same schema and reference catalogue independently; application users appear when the Production UI successfully initializes an authenticated account. Clerk Development identities and Integration rows are not copied into Production.
+After the CHR-12 acceptance cleanup, Integration had four journal entries, no `chr12_deployment_probe`, two application users, and the 3/1/3 catalogue counts. Production had none of the checked application tables before release. Its first preparation creates the same schema and reference catalogue independently; application users appear when the Production UI successfully initializes an authenticated account. Clerk Development identities and Integration rows are not copied into Production.
 
 Git branches hold code and migration files. Neon branches hold independent database state. The matching names do not synchronize them: pushing Git `integration` does not merge database data, and changing Neon's default branch does not change Vercel's saved connection URLs. Both ticket Previews and the explicit Integration deployment use the shared Integration database. `main` Production uses its own database and Clerk Production instance.
 
@@ -103,6 +103,10 @@ Allow reviewers to open Preview URLs under the chosen Deployment Protection poli
 7. Merge the approved ticket into `main` through the normal release process. A fresh Production deployment validates and prepares Production independently. Verify health and account persistence on `https://www.chronostasis.tech` and the bare-domain redirect. Do not promote a Preview artifact carrying Preview database/auth configuration into Production.
 
 Database preparation waits up to 60 seconds for a session advisory lock on one direct connection, then migrates and seeds. The lock serializes preparation jobs, not application publication. Old code can serve traffic during a migration; destructive schema changes require an expand/contract sequence across releases. Never edit an applied migration, reset a hosted database, or run independent migration commands alongside deployment preparation. Recover with a reviewed forward migration. An application rollback does not undo database changes, and packaging can fail after preparation has already succeeded. Redeploying old seed code can restore old catalogue names; put removals and one-time transformations in versioned migrations.
+
+Before deploying CHR-24, confirm that any deployment still accepting account writes on the target database runs CHR-15 or later. Release CHR-15 first if the active version creates users without a welcome item, and protect or retire older deployments that can still write to the same database. Verify that `focus_sessions` is empty and that existing inventory consists of at most one session-less legacy Red gem per user. Migration `0006` stops with a CHR-24 diagnostic if either check fails.
+
+Migration `0006` supports CHR-15's welcome insert during preparation, publication, and rollback. It records that insert as a verified account-creation item.
 
 ## Diagnostics and recovery
 
