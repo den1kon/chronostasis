@@ -1,6 +1,6 @@
 import {createDatabase} from './client';
 import {readDatabaseEnv} from './env';
-import {migrateDatabase} from './migrations';
+import {migrateDatabase, migrationPreconditionMessage} from './migrations';
 
 async function main(): Promise<void> {
   const database = createDatabase(
@@ -13,9 +13,10 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(() => {
+main().catch((error: unknown) => {
   console.error(
-    'Database migration failed. Check DATABASE_URL/MIGRATION_DATABASE_URL and database availability.',
+    migrationPreconditionMessage(error) ??
+      'Database migration failed. Check DATABASE_URL/MIGRATION_DATABASE_URL and database availability.',
   );
   process.exitCode = 1;
 });

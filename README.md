@@ -13,7 +13,7 @@ docker compose up --build -d --wait
 
 Open [http://localhost:5173](http://localhost:5173). Include that origin in `CLERK_AUTHORIZED_PARTIES`. If port 5173 is busy, set `WEB_PORT=5174` and add `http://localhost:5174` to the allowed parties.
 
-Compose starts dependency installation and PostgreSQL first, then migrations/catalogue seeds, the API, and the frontend. Requests flow browser → Vite frontend → `/api` proxy → authenticated Node API → PostgreSQL. Clerk verifies the signed-in user before the API reads or writes that user's record. First-time application-user initialization also grants one welcome item atomically.
+Compose starts dependency installation and PostgreSQL first, then migrations/catalogue seeds, the API, and the frontend. Requests flow browser → Vite frontend → `/api` proxy → authenticated Node API → PostgreSQL. Clerk verifies the signed-in user before the API reads or writes that user's record. First-time application-user initialization grants one verified Token of Creation in the same transaction as the user row.
 
 ### What Compose runs
 

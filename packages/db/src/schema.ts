@@ -1,11 +1,15 @@
 import {
+  boolean,
   check,
+  foreignKey,
   integer,
   jsonb,
   pgTable,
   primaryKey,
   text,
   timestamp,
+  unique,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -135,6 +139,15 @@ export const focusSessions = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, {onDelete: 'cascade', onUpdate: 'restrict'}),
+    chestId: text('chest_id')
+      .notNull()
+      .references(() => chests.id, {
+        onDelete: 'restrict',
+        onUpdate: 'restrict',
+      }),
+    origin: text('origin', {enum: ['online', 'offline']})
+      .default('online')
+      .notNull(),
     status: text('status').notNull(),
     plannedDurationSeconds: integer('planned_duration_seconds').notNull(),
     startedAt: timestamp('started_at', {withTimezone: true}).notNull(),
@@ -147,6 +160,18 @@ export const focusSessions = pgTable(
       .notNull(),
   },
   table => [
+    unique('focus_sessions_id_user_id_unique').on(table.id, table.userId),
+    uniqueIndex('focus_sessions_one_running_online')
+      .on(table.userId)
+      .where(sql`${table.origin} = 'online' and ${table.status} = 'running'`),
+    check(
+      'focus_sessions_origin_allowed',
+      sql`${table.origin} in ('online', 'offline')`,
+    ),
+    check(
+      'focus_sessions_offline_completed',
+      sql`${table.origin} <> 'offline' or ${table.status} = 'completed'`,
+    ),
     check(
       'focus_sessions_status_allowed',
       sql`${table.status} in ('running', 'cancelled', 'completed')`,
@@ -162,25 +187,45 @@ export const focusSessions = pgTable(
   ],
 );
 
-export const userItems = pgTable('user_items', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, {onDelete: 'cascade', onUpdate: 'restrict'}),
-  itemId: text('item_id')
-    .notNull()
-    .references(() => items.id, {onDelete: 'restrict', onUpdate: 'restrict'}),
-  sessionId: uuid('session_id').references(() => focusSessions.id, {
-    onDelete: 'set null',
-    onUpdate: 'restrict',
-  }),
-  receivedAt: timestamp('received_at', {withTimezone: true})
-    .defaultNow()
-    .notNull(),
-  createdAt: timestamp('created_at', {withTimezone: true})
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp('updated_at', {withTimezone: true})
-    .defaultNow()
-    .notNull(),
-});
+export const userItems = pgTable(
+  'user_items',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {onDelete: 'cascade', onUpdate: 'restrict'}),
+    itemId: text('item_id')
+      .notNull()
+      .references(() => items.id, {onDelete: 'restrict', onUpdate: 'restrict'}),
+    sessionId: uuid('session_id'),
+    acquisitionSource: text('acquisition_source', {
+      enum: ['account_creation', 'session_reward', 'offline_claim'],
+    }).notNull(),
+    isVerified: boolean('is_verified').default(false).notNull(),
+    receivedAt: timestamp('received_at', {withTimezone: true})
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', {withTimezone: true})
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', {withTimezone: true})
+      .defaultNow()
+      .notNull(),
+  },
+  table => [
+    // Block deletion of a referenced session while allowing the user's cascades to remove both rows.
+    foreignKey({
+      name: 'user_items_session_owner_fk',
+      columns: [table.sessionId, table.userId],
+      foreignColumns: [focusSessions.id, focusSessions.userId],
+    })
+      .onDelete('no action')
+      .onUpdate('restrict'),
+    check(
+      'user_items_acquisition_provenance',
+      sql`(${table.acquisitionSource} = 'account_creation' and ${table.sessionId} is null and ${table.isVerified})
+        or (${table.acquisitionSource} = 'session_reward' and ${table.sessionId} is not null and ${table.isVerified})
+        or (${table.acquisitionSource} = 'offline_claim' and ${table.sessionId} is not null and not ${table.isVerified})`,
+    ),
+  ],
+);

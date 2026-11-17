@@ -43,7 +43,8 @@ vi.mock('pg', async () => {
   };
 });
 
-vi.mock('./migrations.js', () => ({
+vi.mock('./migrations.js', async importOriginal => ({
+  ...(await importOriginal<typeof import('./migrations.js')>()),
   migrateDatabase: state.migrate,
 }));
 

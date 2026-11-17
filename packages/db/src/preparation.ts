@@ -2,7 +2,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {drizzle} from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import {databasePoolOptions, type DatabaseOperations} from './client.js';
-import {migrateDatabase} from './migrations.js';
+import {migrateDatabase, migrationPreconditionMessage} from './migrations.js';
 import * as schema from './schema.js';
 import {seedCatalogue} from './seeding.js';
 
@@ -75,14 +75,17 @@ export async function prepareDatabase(
     assertConnectionActive();
     stage = 'seed';
     await seedCatalogue(database);
-  } catch {
+  } catch (error) {
+    const precondition =
+      stage === 'migration' ? migrationPreconditionMessage(error) : undefined;
     failure ??= new Error(
-      {
-        connection: 'Database connection failed.',
-        lock: 'Database preparation lock failed.',
-        migration: 'Database migration failed.',
-        seed: 'Database seed failed.',
-      }[stage],
+      precondition ??
+        {
+          connection: 'Database connection failed.',
+          lock: 'Database preparation lock failed.',
+          migration: 'Database migration failed.',
+          seed: 'Database seed failed.',
+        }[stage],
     );
   } finally {
     if (locked) {

@@ -1,6 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {afterAll, beforeAll, describe, expect, it} from 'vitest';
-import {eq} from 'drizzle-orm';
+import {eq, sql} from 'drizzle-orm';
 import {PublicUserSchema} from '@chronostasis/contracts';
 import {createDatabase} from '../src/client';
 import {readTestDatabaseUrl} from '../src/env';
@@ -52,9 +52,14 @@ describe('real Postgres persistence', () => {
       .select()
       .from(userItems)
       .where(eq(userItems.userId, first.id));
-    expect(ownedItems).toHaveLength(1);
-    expect(ownedItems[0]?.itemId).toBe('red-gem');
-    expect(ownedItems[0]?.sessionId).toBeNull();
+    expect(ownedItems).toMatchObject([
+      {
+        itemId: 'creation-token',
+        sessionId: null,
+        acquisitionSource: 'account_creation',
+        isVerified: true,
+      },
+    ]);
   });
   it('creates exactly one row under concurrent initialization', async () => {
     const id = subject();
@@ -73,7 +78,44 @@ describe('real Postgres persistence', () => {
         .select()
         .from(userItems)
         .where(eq(userItems.userId, firstResult.id)),
-    ).toHaveLength(1);
+    ).toMatchObject([
+      {
+        itemId: 'creation-token',
+        sessionId: null,
+        acquisitionSource: 'account_creation',
+        isVerified: true,
+      },
+    ]);
+  });
+
+  it('rolls back a new user if granting the creation token fails', async () => {
+    const id = subject();
+    const rejection = sql.identifier(
+      `fail_creation_grant_${randomUUID().replaceAll('-', '')}`,
+    );
+    await database.orm.execute(sql`
+      create function ${rejection}() returns trigger language plpgsql
+      as $$ begin raise exception 'forced creation grant failure'; end $$
+    `);
+    try {
+      await database.orm.execute(sql`
+        create trigger ${rejection} before insert on user_items
+        for each row when (new.item_id = 'creation-token') execute function ${rejection}()
+      `);
+
+      await expect(repository.ensureUser(id)).rejects.toMatchObject({
+        cause: {message: 'forced creation grant failure'},
+      });
+      await expect(repository.findUser(id)).resolves.toBeNull();
+    } finally {
+      await database.orm.execute(
+        sql`drop trigger if exists ${rejection} on user_items`,
+      );
+      await database.orm.execute(sql`drop function ${rejection}()`);
+    }
+    await expect(repository.ensureUser(id)).resolves.toMatchObject({
+      clerkUserId: id,
+    });
   });
   it('keeps different Clerk subjects separate', async () => {
     const first = await repository.ensureUser(subject());
@@ -95,6 +137,7 @@ describe('real Postgres persistence', () => {
     ).toEqual([
       {id: 'blue-gem', name: 'Blue gem'},
       {id: 'copper-ring', name: 'Copper ring'},
+      {id: 'creation-token', name: 'Token of Creation'},
       {id: 'red-gem', name: 'Red gem'},
       {id: 'rusty-key', name: 'Rusty key'},
     ]);

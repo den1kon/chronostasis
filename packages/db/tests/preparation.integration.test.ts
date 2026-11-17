@@ -42,12 +42,13 @@ describe('serialized database preparation on Postgres', () => {
     expect(
       (
         await database.orm.execute(
-          sql`select id from items where id in ('blue-gem', 'copper-ring', 'red-gem', 'rusty-key') order by id`,
+          sql`select id from items where id in ('blue-gem', 'copper-ring', 'creation-token', 'red-gem', 'rusty-key') order by id`,
         )
       ).rows,
     ).toEqual([
       {id: 'blue-gem'},
       {id: 'copper-ring'},
+      {id: 'creation-token'},
       {id: 'red-gem'},
       {id: 'rusty-key'},
     ]);
@@ -62,6 +63,19 @@ describe('serialized database preparation on Postgres', () => {
       {item_id: 'copper-ring'},
       {item_id: 'rusty-key'},
     ]);
+  });
+
+  it('keeps the Token of Creation out of every chest pool', async () => {
+    await expect(
+      database.orm.execute(sql`
+      select name from items where id = 'creation-token'
+    `),
+    ).resolves.toMatchObject({rows: [{name: 'Token of Creation'}]});
+    await expect(
+      database.orm.execute(sql`
+      select chest_id from chest_items where item_id = 'creation-token'
+    `),
+    ).resolves.toMatchObject({rows: []});
   });
 
   it('preserves existing users and additional catalogue definitions', async () => {
