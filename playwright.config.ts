@@ -22,6 +22,12 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'sync-storage',
+      testDir: './apps/web/src',
+      testMatch: 'sync-storage.spec.ts',
+      use: {...devices['Desktop Chrome'], viewport},
+    },
+    {
       name: 'signed-out',
       testMatch: 'signed-out.spec.ts',
       use: {...devices['Desktop Chrome'], viewport},

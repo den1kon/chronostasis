@@ -57,6 +57,13 @@
       "when": 1794942125565,
       "tag": "0007_chr24_creation_token_rollout",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795625831463,
+      "tag": "0008_chr22_sync_revision",
+      "breakpoints": true
     }
   ]
 }

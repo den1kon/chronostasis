@@ -35,10 +35,10 @@ describe('serialized database preparation on Postgres', () => {
     expect(
       (
         await database.orm.execute(
-          sql`select id from chests where id = 'basic-chest'`,
+          sql`select id, price from chests where id = 'basic-chest'`,
         )
       ).rows,
-    ).toEqual([{id: 'basic-chest'}]);
+    ).toEqual([{id: 'basic-chest', price: 0}]);
     expect(
       (
         await database.orm.execute(

@@ -108,6 +108,12 @@ Before deploying CHR-24, confirm that any deployment still accepting account wri
 
 Migrations `0006` and `0007` support CHR-15's account write during preparation, publication, and rollback. Migration `0007` reserves the previously unused `creation-token` catalogue ID and makes the token available in the same transaction as the schema change. If a custom catalogue entry already uses that ID, preparation stops and preserves the existing item and its chest links. While CHR-15 remains active, its welcome insert creates one verified token. Once CHR-24 is active, its repository writes the provenance explicitly. Keep compatibility on rollback targets to preserve account initialization.
 
+CHR-22 adds migration `0008_chr22_sync_revision.sql`: existing users start at revision zero and Basic chest becomes free without changing balances or existing access. New account creation and its verified token remain the CHR-24 transaction. Apply the migration to shared Integration before exercising CHR-22 feature Previews; those Previews do not prepare the database themselves. This migration does not repeat the empty-session precondition from CHR-24 and does not delete session history.
+
+User revisions advance only with new sync mutations. Catalogue freshness uses a separate hash of public catalogue content, so a price/weight/eligibility edit changes freshness even when user revisions stay equal. Keep future administrative user-state mutations inside the same revision discipline. Old pre-CHR-22 code cannot safely perform new gameplay writes without it. An old deployment's catalogue seed can restore the previous Basic chest price; restoring CHR-22 requires running its approved preparation again. Do not invent refunds during rollout or rollback.
+
+No CHR-22 hosted acceptance is implied by local tests or the historical hosted evidence below. Validate authenticated snapshot reads, free unlock, retry behavior and reconnection on the selected deployment after preparation.
+
 ## Diagnostics and recovery
 
 | Symptom/stage | Check and action |
@@ -119,6 +125,7 @@ Migrations `0006` and `0007` support CHR-15's account write during preparation, 
 | `Database migration failed` | Inspect the committed migration and journal using the intended branch. Determine what applied before retrying; use a reviewed corrective migration when needed. |
 | `Database seed failed` | Check catalogue constraints and current migration state. The seed owns its transaction; fix the cause and retry. No reset is required. |
 | API health returns 503 | Confirm runtime credentials point to the same intended branch and the schema exists there. Review protected platform logs without exposing secrets. |
+| Authentication returns 503 | Signing-key retrieval is unavailable. Check Clerk availability and server network/TLS access; do not treat this as an expired user credential or reset local data. Protected operations remain blocked until verification succeeds. |
 | Authentication returns 401 | Verify the Clerk instance triplet and exact allowed frontend origin. Direct browser navigation to `/api/me` has no frontend bearer header and is expected to return 401; inspect the signed-in UI's authenticated request instead. |
 | A branch appears to contain unexpected users/data | Confirm its Neon branch ID and parent history. Normal Neon branching inherits parent data; an apparently new branch is not necessarily empty. |
 | Database inspected in Neon disagrees with the app | Match the deployment's direct endpoint hostname to the Neon branch/compute in the dashboard. A database name alone does not identify a Neon branch. |

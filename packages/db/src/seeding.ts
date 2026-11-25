@@ -61,7 +61,7 @@ export async function seedCatalogue(
       .values({
         id: 'basic-chest',
         name: 'Basic chest',
-        price: 100,
+        price: 0,
         spriteX: 0,
         spriteY: 0,
       })

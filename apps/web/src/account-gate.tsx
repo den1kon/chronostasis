@@ -1,96 +1,178 @@
-import {useEffect, useState, type ReactNode} from 'react';
-import {ApiClientError, getCurrentUser, initializeUser} from './api';
+import type {SyncOperation} from '@chronostasis/contracts';
+import {
+  useEffect,
+  useEffectEvent,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
+import {buttonStyle, secondaryButtonStyle} from './gameplay-styles';
+import {SyncContext} from './sync-context';
+import {createSyncEngine, type SyncEngine} from './sync-engine';
 
-type State =
-  | {status: 'loading'}
-  | {status: 'ready'}
-  | {status: 'error'; error: ApiClientError};
-interface Props {
+interface ConnectionProps {
+  userId: string;
   getToken: () => Promise<string | null>;
   signInAgain: () => Promise<void>;
   children: ReactNode;
 }
-export function AccountGate({getToken, signInAgain, children}: Props) {
-  const [state, setState] = useState<State>({status: 'loading'});
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    const cancelled = () => controller.signal.aborted;
-    const sync = async () => {
-      try {
-        const writeToken = await getToken();
-        if (cancelled()) return;
-        if (!writeToken) throw new ApiClientError('UNAUTHORIZED');
-        const initialized = await initializeUser(writeToken, controller.signal);
-        if (cancelled()) return;
-        const readToken = await getToken();
-        if (cancelled()) return;
-        if (!readToken) throw new ApiClientError('UNAUTHORIZED');
-        const persisted = await getCurrentUser(readToken, controller.signal);
-        if (cancelled()) return;
-        if (
-          initialized.id !== persisted.id ||
-          initialized.clerkUserId !== persisted.clerkUserId
-        )
-          throw new ApiClientError('INVALID_RESPONSE');
-        setState({status: 'ready'});
-      } catch (error) {
-        if (cancelled()) return;
-        setState({
-          status: 'error',
-          error:
-            error instanceof ApiClientError
-              ? error
-              : new ApiClientError('REQUEST_FAILED', true),
-        });
-      }
-    };
-    void sync();
-    return () => {
-      controller.abort();
-    };
-  }, [attempt, getToken]);
 
-  if (state.status === 'loading')
-    return (
-      <p role="status" className="my-10 text-leaf">
-        Getting your account ready…
-      </p>
-    );
-  if (state.status === 'error')
+const operationLabels: Record<SyncOperation['type'], string> = {
+  buy_chest: 'Chest purchase',
+  start_session: 'Session start',
+  claim_reward: 'Reward claim',
+  cancel_session: 'Session cancellation',
+  offline_session_claim: 'Offline reward',
+};
+
+const loading = (
+  <p role="status" className="my-10 text-leaf">
+    Getting your account ready…
+  </p>
+);
+
+export function AccountGate({
+  sessionId,
+  ...props
+}: ConnectionProps & {sessionId: string}) {
+  // Remount immediately so a session or account switch cannot display the previous view.
+  return (
+    <AccountConnection
+      key={JSON.stringify([props.userId, sessionId])}
+      {...props}
+    />
+  );
+}
+
+function AccountConnection({
+  userId,
+  getToken,
+  signInAgain,
+  children,
+}: ConnectionProps) {
+  const [engine, setEngine] = useState<SyncEngine | null>(null);
+  const getSessionToken = useEffectEvent(getToken);
+
+  useEffect(() => {
+    // Each effect owns a disposable engine, including the Strict Mode probe.
+    const connection = createSyncEngine({
+      userId,
+      getToken: () => getSessionToken(),
+    });
+    let disposed = false;
+    void connection.initialize().then(() => {
+      if (!disposed) setEngine(connection);
+    });
+    return () => {
+      disposed = true;
+      connection.dispose();
+    };
+  }, [userId]);
+
+  if (!engine) return loading;
+  return (
+    <AccountView engine={engine} signInAgain={signInAgain}>
+      {children}
+    </AccountView>
+  );
+}
+
+function AccountView({
+  engine,
+  signInAgain,
+  children,
+}: {
+  engine: SyncEngine;
+  signInAgain: () => Promise<void>;
+  children: ReactNode;
+}) {
+  const state = useSyncExternalStore(engine.subscribe, engine.getState);
+  const [signInFailed, setSignInFailed] = useState(false);
+  const {snapshot, view} = state;
+  if (!state.initialized) return loading;
+  if (state.unauthorized || !snapshot || !view) {
+    const message = state.unauthorized
+      ? 'Your session needs to be refreshed. Please sign in again.'
+      : (state.error ?? 'Connect to download your account before playing.');
     return (
       <section
         className="my-10 rounded-2xl border border-outline p-5"
         aria-label="Account connection"
       >
-        <p role="alert">{state.error.message}</p>
+        <p role="alert">{message}</p>
+        {signInFailed && (
+          <p role="alert" className="mt-2">
+            Could not open sign-in. Please try again.
+          </p>
+        )}
         <button
           type="button"
-          className="mt-5 rounded-lg bg-leaf px-4 py-2 font-semibold text-forest focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-leaf"
+          className={`mt-5 ${buttonStyle}`}
+          disabled={state.syncing}
           onClick={() => {
-            if (state.error.code === 'UNAUTHORIZED') {
+            if (state.unauthorized) {
+              setSignInFailed(false);
               void signInAgain().catch(() => {
-                setState({
-                  status: 'error',
-                  error: new ApiClientError('NETWORK_ERROR', true),
-                });
+                setSignInFailed(true);
               });
             } else {
-              setState({status: 'loading'});
-              setAttempt(value => value + 1);
+              void engine.sync();
             }
           }}
         >
-          {state.error.code === 'UNAUTHORIZED' ? 'Sign in again' : 'Try again'}
+          {state.unauthorized ? 'Sign in again' : 'Try again'}
         </button>
       </section>
     );
+  }
+
+  const rejected = state.outcomes.filter(
+    outcome => outcome.status === 'rejected',
+  );
   return (
-    <>
-      <p role="status" className="my-6 text-sm text-leaf">
-        Account ready
-      </p>
+    <SyncContext.Provider value={{engine, state: {...state, snapshot, view}}}>
+      <div className="my-6 flex flex-wrap items-center justify-between gap-3 text-sm">
+        <p role="status" className="text-leaf">
+          {!state.online
+            ? 'Offline'
+            : state.syncing
+              ? 'Syncing…'
+              : 'Account ready'}
+        </p>
+        <button
+          type="button"
+          className={secondaryButtonStyle}
+          disabled={state.syncing}
+          onClick={() => {
+            void engine.sync();
+          }}
+        >
+          Sync now
+        </button>
+      </div>
+      {state.error && (
+        <p role="alert" className="text-parchment/85">
+          {state.error}
+        </p>
+      )}
+      {rejected.length > 0 && (
+        <ul
+          aria-label="Sync notices"
+          className="my-4 space-y-2 rounded-xl border border-outline p-4 text-sm text-parchment/85"
+        >
+          {rejected.map(outcome => (
+            <li
+              key={outcome.operationId}
+              role={outcome.retryable ? 'status' : 'alert'}
+            >
+              {operationLabels[outcome.type]}{' '}
+              {outcome.retryable ? 'still pending.' : 'rejected.'}{' '}
+              {outcome.message}
+            </li>
+          ))}
+        </ul>
+      )}
       {children}
-    </>
+    </SyncContext.Provider>
   );
 }

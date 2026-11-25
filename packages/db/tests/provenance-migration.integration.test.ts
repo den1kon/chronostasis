@@ -171,8 +171,18 @@ it('guards the provenance upgrade, backfills welcome copies, and supports legacy
         sql`delete from items where id = 'creation-token'`,
       );
 
+      await database.orm.execute(sql`
+        insert into chests (id, name, price, sprite_x, sprite_y)
+        values ('basic-chest', 'Basic chest', 100, 0, 0)
+      `);
       await migrateDatabase(database);
       await migrateDatabase(database);
+      await expect(
+        database.orm.execute(sql`
+        select revision::integer, price from users cross join chests
+        where users.id = ${userId} and chests.id = 'basic-chest'
+      `),
+      ).resolves.toMatchObject({rows: [{revision: 0, price: 0}]});
       await expect(
         createUserRepository(database).ensureUser(userId),
       ).resolves.toEqual({

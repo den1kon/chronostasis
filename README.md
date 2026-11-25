@@ -1,6 +1,18 @@
 # Chronostasis
 
-Chronostasis is a mobile-first focus app foundation. Clerk sign-in and account persistence work locally; Focus and Inventory are placeholders. Timer and rewards are future work. The hosted build validates its Neon target, prepares Integration on an explicit redeploy, and prepares Production automatically; Vercel/Neon setup and hosted Integration migration/retry/failure/persistence acceptance are verified. Production preparation and signed-in persistence also passed after the owner corrected its Clerk secret; the deployment runbook records the evidence.
+Chronostasis is a mobile-first focus app. Sign in with Clerk, unlock a chest, and complete focus sessions to collect rewards. The hosted build validates its Neon target, prepares Integration on an explicit redeploy, and prepares Production automatically. The deployment runbook records hosted preparation and sign-in verification.
+
+## Focus and inventory
+
+New accounts start with zero coins and one verified Token of Creation. Unlock the free Basic chest from Focus, choose 15 to 180 minutes in five-minute increments, then start the timer. Claim your reward when the timer ends or cancel the session from Focus. Inventory shows the verification and sync status of each collected item.
+
+Mythic rewards require a planned focus session of at least one hour. A chest containing only Mythic rewards becomes available at 60 minutes. Shorter sessions can still use chests with other eligible rewards.
+
+After the signed-in app has downloaded your account, you can keep playing during a connection loss. Offline purchases and rewards stay pending until sync. An accepted offline reward remains unverified. If the server rejects an offline purchase or reward, the app shows the reason and restores the canonical balance, chest access, and inventory. A session started online can queue its claim offline. On reconnect the server checks elapsed time and selects the verified reward.
+
+Offline timers count device sleep time. Changing the device clock can affect their countdown, and their rewards remain unverified.
+
+The loaded app syncs on reconnect. Use **Sync now** to retry a pending action or refresh the account. Offline gameplay starts from an already loaded, signed-in page with saved account data.
 
 ## Run locally
 
@@ -56,7 +68,7 @@ The main workspaces are `apps/web` (React/Vite), `apps/api` (local Node server),
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for runtime/data boundaries and the [design spec](docs/superpowers/specs/2026-10-23-chr-5-bootstrap-design.md) for detailed requirements.
 
-## Before opening a PR to `main`
+## Before opening a PR to `integration`
 
 Use Node.js **24.20.0** and pnpm **10.34.7** locally. The `.node-version` file pins the local runtime; `package.json` accepts Node.js 24.20.0 and newer patch releases in the 24.x line so Vercel's managed Node runtime can update patches. Install from the lockfile, then run the PR gate:
 

@@ -6,6 +6,7 @@ test('shows sign-in on a protected direct route and rejects unauthenticated API 
 }) => {
   const apiResponse = await request.get('/api/me');
   expect(apiResponse.status()).toBe(401);
+  expect((await request.get('/api/sync')).status()).toBe(401);
 
   const navigationResponse = await page.goto('/inventory');
   expect(navigationResponse?.status()).toBe(200);

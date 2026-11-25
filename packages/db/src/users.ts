@@ -1,5 +1,5 @@
 import type {PublicUser} from '@chronostasis/contracts';
-import {eq, sql} from 'drizzle-orm';
+import {eq} from 'drizzle-orm';
 import type {Database} from './client.js';
 import {userItems, users} from './schema.js';
 import {creationTokenId} from './seeding.js';
@@ -10,10 +10,20 @@ function requireIdentity(clerkUserId: string): void {
 
 export function createUserRepository(database: Database) {
   const publicFields = {id: users.id, clerkUserId: users.clerkUserId};
+  async function findUser(clerkUserId: string): Promise<PublicUser | null> {
+    requireIdentity(clerkUserId);
+    const [user] = await database.orm
+      .select(publicFields)
+      .from(users)
+      .where(eq(users.clerkUserId, clerkUserId));
+    return user ?? null;
+  }
   return {
+    findUser,
     // Grant the creation token in the same transaction as the new application user.
     async ensureUser(clerkUserId: string): Promise<PublicUser> {
-      requireIdentity(clerkUserId);
+      const initialized = await findUser(clerkUserId);
+      if (initialized) return initialized;
       return database.orm.transaction(async transaction => {
         const [newUser] = await transaction
           .insert(users)
@@ -33,23 +43,13 @@ export function createUserRepository(database: Database) {
         }
 
         const [existingUser] = await transaction
-          .update(users)
-          .set({updatedAt: sql`now()`})
-          .where(eq(users.clerkUserId, clerkUserId))
-          .returning(publicFields);
+          .select(publicFields)
+          .from(users)
+          .where(eq(users.clerkUserId, clerkUserId));
         if (!existingUser)
           throw new Error('User initialization returned no row.');
         return existingUser;
       });
-    },
-    async findUser(clerkUserId: string): Promise<PublicUser | null> {
-      requireIdentity(clerkUserId);
-      const [user] = await database.orm
-        .select(publicFields)
-        .from(users)
-        .where(eq(users.clerkUserId, clerkUserId))
-        .limit(1);
-      return user ?? null;
     },
   };
 }
