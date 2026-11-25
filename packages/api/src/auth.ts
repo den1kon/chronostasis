@@ -1,6 +1,8 @@
 import {verifyToken} from '@clerk/backend';
+import {AuthenticationUnavailableError} from './auth-error.js';
 import type {ApiEnv} from './env.js';
 
+const remoteKeyLoadFailure = 'jwk-remote-failed-to-load';
 const verificationReasons = new Set([
   'token-expired',
   'token-invalid',
@@ -13,13 +15,46 @@ const verificationReasons = new Set([
   'token-verification-failed',
   'secret-key-invalid',
   'jwk-local-missing',
-  'jwk-remote-failed-to-load',
   'jwk-remote-invalid',
   'jwk-remote-missing',
   'jwk-failed-to-resolve',
   'jwk-kid-mismatch',
 ]);
+const transportErrorCodes = new Set([
+  'EAI_AGAIN',
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'ENOTFOUND',
+  'ETIMEDOUT',
+  'UND_ERR_BODY_TIMEOUT',
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_HEADERS_TIMEOUT',
+  'UND_ERR_SOCKET',
+]);
 
+// Clerk reports malformed JWTs with a reason and forwards bare JWKS fetch and JSON errors.
+function jwksFailureReason(
+  error: unknown,
+  reason: unknown,
+): string | undefined {
+  if (reason === remoteKeyLoadFailure) return reason;
+  if (reason !== undefined) return undefined;
+  if (error instanceof SyntaxError) return 'jwks-invalid-json';
+  if (!(error instanceof TypeError)) return undefined;
+  const cause = error.cause;
+  if (
+    cause instanceof Error &&
+    'code' in cause &&
+    typeof cause.code === 'string' &&
+    transportErrorCodes.has(cause.code)
+  )
+    return 'jwks-transport-failed';
+  return undefined;
+}
+
+// Return a verified identity or null for rejected credentials. Throw if verification is unavailable.
 export function createAuthenticator(
   settings: Pick<
     ApiEnv,
@@ -31,21 +66,27 @@ export function createAuthenticator(
       request.headers.get('authorization') ?? '',
     )?.[1];
     if (!token) return null;
+    let claims: Awaited<ReturnType<typeof verifyToken>>;
     try {
-      const claims = await verifyToken(token, {
+      claims = await verifyToken(token, {
         secretKey: settings.clerkSecretKey,
         issuer: settings.clerkIssuer,
         authorizedParties: settings.authorizedParties,
       });
-      if (!claims.sub.trim() || !claims.sid.trim() || claims.sts === 'pending')
-        return null;
-      return {clerkUserId: claims.sub};
     } catch (error) {
       const reason =
         typeof error === 'object' && error !== null && 'reason' in error
           ? error.reason
           : undefined;
       // Emit only known categories: SDK messages and error objects can contain credentials.
+      const unavailableReason = jwksFailureReason(error, reason);
+      if (unavailableReason) {
+        console.warn(
+          'Clerk session verification unavailable',
+          unavailableReason,
+        );
+        throw new AuthenticationUnavailableError();
+      }
       console.warn(
         'Clerk session rejected',
         typeof reason === 'string' && verificationReasons.has(reason)
@@ -54,5 +95,14 @@ export function createAuthenticator(
       );
       return null;
     }
+    if (
+      typeof claims.sub !== 'string' ||
+      !claims.sub.trim() ||
+      typeof claims.sid !== 'string' ||
+      !claims.sid.trim() ||
+      claims.sts === 'pending'
+    )
+      return null;
+    return {clerkUserId: claims.sub};
   };
 }

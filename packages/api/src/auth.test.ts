@@ -52,6 +52,35 @@ describe('Clerk session verification', () => {
       'verification-failed',
     );
   });
+  it('reports remote key load failures with a safe error and log category', async () => {
+    vi.mocked(verifyToken).mockRejectedValue(
+      Object.assign(new Error('private token and key details'), {
+        reason: 'jwk-remote-failed-to-load',
+        token: 'private-token',
+      }),
+    );
+    const result = authenticate(request('Bearer private-token'));
+    await expect(result).rejects.toThrow(/^Service unavailable$/u);
+    await expect(result).rejects.toHaveProperty(
+      'name',
+      'AuthenticationUnavailableError',
+    );
+    await expect(result).rejects.not.toHaveProperty('cause');
+    expect(console.warn).toHaveBeenCalledExactlyOnceWith(
+      'Clerk session verification unavailable',
+      'jwk-remote-failed-to-load',
+    );
+  });
+  it('does not classify arbitrary TypeErrors or causes as transport failures', async () => {
+    vi.mocked(verifyToken).mockRejectedValue(
+      new TypeError('private token details', {cause: {code: 'private-code'}}),
+    );
+    expect(await authenticate(request('Bearer invalid'))).toBeNull();
+    expect(console.warn).toHaveBeenCalledExactlyOnceWith(
+      'Clerk session rejected',
+      'verification-failed',
+    );
+  });
   it.each([undefined, '', 'Basic abc', 'Bearer ', 'Bearer a b'])(
     'rejects missing or malformed bearer credentials',
     async header => {

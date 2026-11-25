@@ -9,6 +9,15 @@ const user = {
   id: '5e15220e-96eb-4123-8cd1-3fc37b06446a',
   clerkUserId: 'user_verified',
 };
+const snapshot = {
+  revision: 0,
+  catalogueVersion: 'catalogue-0',
+  user: {id: user.id, coins: 0},
+  catalogue: {items: [], chests: [], chestItems: []},
+  userChests: [],
+  items: [],
+  sessions: [],
+};
 const realHandler = createApiHandler({
   authenticate: request =>
     Promise.resolve(
@@ -19,6 +28,9 @@ const realHandler = createApiHandler({
   ensureUser: () => Promise.resolve(user),
   findUser: () => Promise.resolve(user),
   probe: () => Promise.resolve(),
+  getSnapshot: () => Promise.resolve(snapshot),
+  processOperation: (_subject, {operationId, type}) =>
+    Promise.resolve({operationId, type, status: 'accepted', retryable: false}),
 });
 const observed = vi.fn(async (request: Request) => {
   if (new URL(request.url).pathname === '/api/echo')
@@ -103,6 +115,36 @@ describe('local and Vercel adapter parity', () => {
       (await both('/api/me', {headers: {authorization: 'Bearer fixture'}}))
         .body,
     ).toEqual({user});
+  });
+  it('serves authenticated sync GET and POST through both adapters', async () => {
+    const headers = {authorization: 'Bearer fixture'};
+    expect((await both('/api/sync')).status).toBe(401);
+    expect(
+      await both('/api/sync?revision=0&catalogueVersion=catalogue-0', {
+        headers,
+      }),
+    ).toMatchObject({
+      status: 200,
+      body: {unchanged: true, revision: 0, catalogueVersion: 'catalogue-0'},
+      cache: 'no-store',
+    });
+    const operationId = '8d911870-547e-4edf-ae20-a78e78d8b14c';
+    expect(
+      await both('/api/sync', {
+        method: 'POST',
+        body: JSON.stringify({
+          operations: [{operationId, type: 'buy_chest', chestId: 'trésor'}],
+        }),
+        headers: {...headers, 'content-type': 'application/json'},
+      }),
+    ).toMatchObject({
+      status: 200,
+      body: {
+        outcomes: [{operationId, type: 'buy_chest', status: 'accepted'}],
+        snapshot,
+      },
+      cache: 'no-store',
+    });
   });
   it('preserves raw POST bytes, method, headers, URL and response headers', async () => {
     const body = ' {"forged": "é"}\n';

@@ -1,5 +1,6 @@
 import {
   createDatabase,
+  createSyncRepository,
   createUserRepository,
   readDatabaseEnv,
 } from '../../db/src/index.js';
@@ -13,11 +14,15 @@ export function createProductionApi(
   const settings = readApiEnv(env);
   const database = createDatabase(readDatabaseEnv(env).databaseUrl);
   const repository = createUserRepository(database);
+  const sync = createSyncRepository(database);
   const handler = createApiHandler({
     authenticate: createAuthenticator(settings),
     ensureUser: subject => repository.ensureUser(subject),
     findUser: subject => repository.findUser(subject),
     probe: () => database.probe(),
+    getSnapshot: subject => sync.getSnapshot(subject),
+    processOperation: (subject, operation) =>
+      sync.processOperation(subject, operation),
   });
   return {
     handler,
