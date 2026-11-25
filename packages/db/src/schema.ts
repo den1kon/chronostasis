@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   check,
   foreignKey,
@@ -20,6 +21,7 @@ export const users = pgTable(
   {
     id: uuid('id').defaultRandom().primaryKey(),
     clerkUserId: text('clerk_user_id').notNull().unique(),
+    revision: bigint('revision', {mode: 'number'}).default(0).notNull(),
     coins: integer('coins').default(0).notNull(),
     createdAt: timestamp('created_at', {withTimezone: true})
       .defaultNow()
@@ -28,7 +30,13 @@ export const users = pgTable(
       .defaultNow()
       .notNull(),
   },
-  table => [check('users_coins_nonnegative', sql`${table.coins} >= 0`)],
+  table => [
+    check('users_coins_nonnegative', sql`${table.coins} >= 0`),
+    check(
+      'users_revision_safe',
+      sql`${table.revision} between 0 and 9007199254740991`,
+    ),
+  ],
 );
 
 export const items = pgTable(
@@ -37,7 +45,9 @@ export const items = pgTable(
     id: text('id').primaryKey(),
     name: varchar('name', {length: 100}).notNull(),
     description: jsonb('description'),
-    rarity: text('rarity').notNull(),
+    rarity: text('rarity', {
+      enum: ['common', 'rare', 'epic', 'legendary', 'mythic'],
+    }).notNull(),
     stats: jsonb('stats').default({}).notNull(),
     spriteX: integer('sprite_x').notNull(),
     spriteY: integer('sprite_y').notNull(),
@@ -148,7 +158,9 @@ export const focusSessions = pgTable(
     origin: text('origin', {enum: ['online', 'offline']})
       .default('online')
       .notNull(),
-    status: text('status').notNull(),
+    status: text('status', {
+      enum: ['running', 'cancelled', 'completed'],
+    }).notNull(),
     plannedDurationSeconds: integer('planned_duration_seconds').notNull(),
     startedAt: timestamp('started_at', {withTimezone: true}).notNull(),
     endedAt: timestamp('ended_at', {withTimezone: true}),
