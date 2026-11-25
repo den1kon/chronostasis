@@ -79,6 +79,16 @@ Use Clerk development keys in Vercel's Preview environment and production keys i
 
 The hosted runner uses the same serverless function typecheck as `pnpm typecheck`, then the ordinary app build. No laptop migration command or hosted database credential is required. Feature Previews and the explicit Integration deployment share the same persistent database, so test risky migrations on an isolated Neon branch before preparing Integration.
 
+## Sync development
+
+CHR-22 uses a canonical full snapshot plus a per-account IndexedDB outbox. A newly applied server operation advances that user's revision once; retries, rejected operations, reads and no-ops do not. The catalogue has an independent content hash. A stale cached revision never authorizes a client overwrite or forces blanket rejection: validate the operation against current database state. Use one transaction for each operation and consistent reads for the snapshot.
+
+Keep reward selection browser-safe in `packages/contracts`; online randomness, authentication, prices, balances and verification stay on the server. Offline-origin rewards remain unverified after acceptance and cannot award coins. A server-recorded online session can receive its server-selected verified reward after reconnect. Advancing a browser clock does not advance the server clock; elapsed-time acceptance needs real database tests. Offline timers use one persisted wall-clock deadline for display and completion so device sleep counts. Test sleep with wall time advancing while the performance clock is paused, plus component remount/reload. Device-clock changes may affect offline readiness by explicit product choice; those claims remain unverified.
+
+Basic chest is free and unlocked explicitly through the normal purchase operation. Users still begin with zero coins. Preserve current access during upgrades and keep migration history additive.
+
+Exercise IndexedDB transactions and multi-tab locking in a real browser. Snapshot installation and outbox acknowledgements must commit together, and offline completion must enqueue its claim and clear its local running session together. Preserve queued actions during account switches without showing another account's cache. Offline use requires the application and Clerk identity to be available; a service worker and guaranteed cold offline startup are separate packaging work.
+
 ## Format, lint, and test
 
 GTS is authoritative for JavaScript and TypeScript formatting and general lint rules. Run its check or explicit autofix with:
@@ -102,4 +112,4 @@ The underlying focused commands are `pnpm lint`, `pnpm typecheck`, `pnpm test:un
 
 ## Typical contribution flow
 
-Create the ticket branch (`feature/CHR-123`, `bugfix/CHR-123`, or `maintenance/CHR-123`), install dependencies and hooks, make a focused change with its tests and docs, run `pnpm format:fix` when needed, then run `pnpm verify:all`. Review the resulting diff before staging and commit with the ticket-prefixed subject. Open a PR to `main` only after the local gate passes.
+Create the ticket branch (`feature/CHR-123`, `bugfix/CHR-123`, or `maintenance/CHR-123`), install dependencies and hooks, make a focused change with its tests and docs, run `pnpm format:fix` when needed, then run `pnpm verify:all`. Review the resulting diff before staging and commit with the ticket-prefixed subject. Open a PR to `integration` only when explicitly requested and after the local gate passes. Keep implementation changes unstaged until the user confirms the unstaged review is complete.

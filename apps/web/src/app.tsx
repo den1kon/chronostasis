@@ -1,4 +1,11 @@
-import {ClerkProvider, SignIn, SignUp, UserButton, useAuth} from '@clerk/react';
+import {
+  ClerkProvider,
+  SignIn,
+  SignUp,
+  UserButton,
+  useAuth,
+  useSession,
+} from '@clerk/react';
 import {
   Navigate,
   NavLink,
@@ -10,20 +17,27 @@ import {
   useSearchParams,
 } from 'react-router';
 import {AccountGate} from './account-gate';
+import {FocusGameplay} from './focus-gameplay';
+import {InventoryCollection} from './inventory-collection';
 
 const linkStyle =
   'rounded-full px-4 py-2 text-sm font-semibold transition-colors hover:bg-parchment/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-leaf aria-[current=page]:bg-leaf aria-[current=page]:text-forest';
 function ProtectedShell() {
-  const {isLoaded, isSignedIn, userId, sessionId, getToken, signOut} =
-    useAuth();
+  const {isLoaded, isSignedIn, userId, sessionId, signOut} = useAuth();
+  const sessionState = useSession();
+  const {session} = sessionState;
   const location = useLocation();
-  if (!isLoaded)
+  if (
+    !isLoaded ||
+    !sessionState.isLoaded ||
+    (isSignedIn && (session?.id !== sessionId || session.user.id !== userId))
+  )
     return (
       <p role="status" className="p-6">
         Loading your session…
       </p>
     );
-  if (!isSignedIn)
+  if (!isSignedIn || !session)
     return (
       <Navigate
         to={`/sign-in?returnTo=${encodeURIComponent(location.pathname)}`}
@@ -59,8 +73,9 @@ function ProtectedShell() {
       </header>
       <main id="main-content" className="py-3 wrap-anywhere" tabIndex={-1}>
         <AccountGate
-          key={`${userId}:${sessionId}`}
-          getToken={getToken}
+          userId={session.user.id}
+          sessionId={session.id}
+          getToken={() => session.getToken()}
           signInAgain={() => signOut({redirectUrl: '/sign-in'})}
         >
           <Outlet />
@@ -84,21 +99,7 @@ function Focus() {
       <p className="mt-6 max-w-125 text-lg text-parchment/80">
         Finish a focus session. Open a chest. Collect a little wonder.
       </p>
-      <section
-        aria-labelledby="focus-heading"
-        className="mt-10 rounded-3xl border border-outline bg-parchment/5 p-6 sm:p-8"
-      >
-        <span className="rounded-full border border-outline px-3 py-1 text-xs font-semibold text-leaf">
-          Coming soon
-        </span>
-        <h2 id="focus-heading" className="mt-5 text-2xl font-semibold">
-          Your next focus session
-        </h2>
-        <p className="mt-3 max-w-125 text-parchment/75">
-          The timer and chest rewards are still taking shape. Your account is
-          ready for the journey.
-        </p>
-      </section>
+      <FocusGameplay />
     </>
   );
 }
@@ -111,21 +112,7 @@ function Inventory() {
       <h1 className="mt-4 text-[clamp(2.5rem,9vw,4.5rem)] leading-[1.1] font-bold tracking-tight">
         Your inventory
       </h1>
-      <section
-        aria-labelledby="collection-heading"
-        className="mt-10 rounded-3xl border border-outline bg-parchment/5 p-6 sm:p-8"
-      >
-        <span className="rounded-full border border-outline px-3 py-1 text-xs font-semibold text-leaf">
-          Coming soon
-        </span>
-        <h2 id="collection-heading" className="mt-5 text-2xl font-semibold">
-          Your collection starts here.
-        </h2>
-        <p className="mt-3 max-w-125 text-parchment/75">
-          Collected items will appear here once focus sessions and rewards are
-          available.
-        </p>
-      </section>
+      <InventoryCollection />
     </>
   );
 }

@@ -11,6 +11,10 @@
       "node"
     ]
   },
+  "references": [
+    {"path": "./packages/contracts"},
+    {"path": "./packages/db"}
+  ],
   "include": [
     "vitest.config.ts",
     "vitest.integration.config.ts",
